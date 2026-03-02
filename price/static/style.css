@@ -1,0 +1,35 @@
+body{
+    font-family: sans-serif;
+    text-align: center;
+    background: #f8f8f8;
+}
+
+body{
+    background-image: url("/static/background_sushi.jpg");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+}
+
+.plates{
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    margin-top: 40px;
+}
+
+.plate{
+    width: 130px;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.plate:hover{
+    transform: scale(1.1) rotate(3deg);
+}
+
+.plate:active{
+    transform: scale(0.95);
+    box-shadow: 0 0 10px rgba(0,0,0,0.3);
+}

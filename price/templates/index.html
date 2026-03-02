@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Sushi Counter</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<h1>へい！いらっしゃい！！</h1>
+<p> ユーザーID:
+<input id="userID" value="1">
+</p>
+
+<h2>食べたお皿のボタンを押してね！</h2>
+<div class="plates">
+<img src="/static/plate120.png"
+    class=" plate"
+    onclick="addPlate(120)">
+<img src="/static/plate180.png"
+    class=" plate"
+    onclick="addPlate(180)">
+<img src="/static/plate260.png"
+    class=" plate"
+    onclick="addPlate(260)">
+
+</div>
+<p id="message"></p>
+<script src="/static/script.js"></script>
+<!-- <script>
+function addPlate(price) {
+    const userID = document.getElementById("userID").value;
+
+    fetch("/plates", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ user_id: parseInt(userID), price: price })
+    })
+    .then(res => res.json())
+    .then(data => {
+        document.getElementById("message").innerText = "追加しました！！"+price+"円";
+    });
+}
+</script> -->
+
+</body>
+</html>
