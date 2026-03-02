@@ -1,6 +1,13 @@
+let total = 0;
+
 function addPlate(price) {
     const userID = document.getElementById("userID").value;
+    //合計金額を計算
+    total += price;
+    //合計金額を書き換え
+    document.getElementById("total").innerText = total;
 
+    //DBに送信
     fetch("/plates", {
         method: "POST",
         headers: {
@@ -10,6 +17,6 @@ function addPlate(price) {
     })
     .then(res => res.json())
     .then(data => {
-        document.getElementById("message").innerText = "へい！まいどあり！"+price+"円";
+        document.getElementById("message").innerText = "へい！まいどあり！";
     });
 }
