@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>注文画面</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="app-container">
+        <h1>🍣 ご注文メニュー</h1>
+        <p style="text-align: center; color: #718096; font-size: 14px;">食べたいお寿司をタップ！</p>
+        
+        <form action="/order" method="POST" class="sushi-grid">
+            <button type="submit" name="sushi_name" value="マグロ" class="sushi-btn">マグロ</button>
+            <button type="submit" name="sushi_name" value="サーモン" class="sushi-btn">サーモン</button>
+            <button type="submit" name="sushi_name" value="エビ" class="sushi-btn">エビ</button>
+            <button type="submit" name="sushi_name" value="たまご" class="sushi-btn">たまご</button>
+            <button type="submit" name="sushi_name" value="いくら" class="sushi-btn">いくら</button>
+            <button type="submit" name="sushi_name" value="イカ" class="sushi-btn">イカ</button>
+        </form>
+        
+        <br>
+        <a href="/mypage" class="btn-primary" style="width: 80%; max-width: 250px; margin: 30px auto 0; text-align: center; text-decoration: none; box-sizing: border-box;">👤 マイページを見る</a>
+    </div>
+</body>
+</html>

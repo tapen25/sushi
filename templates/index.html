@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"> <title>ご来店ありがとうございます</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="app-container">
+        <h1>ようこそ！🍣</h1>
+        <p style="text-align: center; color: #718096; font-size: 14px;">注文を始める前に、お客様の情報を教えてください。</p>
+        
+        <form action="/register" method="POST">
+            <label>性別：</label>
+            <select name="gender" required>
+                <option value="" disabled selected>選択してください</option>
+                <option value="male">男性</option>
+                <option value="female">女性</option>
+                <option value="other">その他・答えない</option>
+            </select>
+            
+            <label>年齢：</label>
+            <input type="number" name="age" min="0" max="120" placeholder="例: 20" required>
+            
+            <button type="submit" class="btn-primary">来店して注文を始める</button>
+        </form>
+    </div>
+</body>
+</html>

@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>お店側 管理画面</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        /* 画面全体のベース設定（薄いグレーの背景） */
+        body { 
+            font-family: 'Helvetica Neue', Arial, 'Hiragino Sans', sans-serif; 
+            background-color: #f4f7f6; 
+            color: #2c3e50; 
+            margin: 0; 
+            padding: 20px; 
+        }
+
+        /* ヘッダー周り */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+        h1 { margin: 0; font-size: 24px; color: #1a252f; }
+        .btn-back {
+            background-color: #34495e; color: white;
+            text-decoration: none; padding: 10px 20px;
+            border-radius: 8px; font-weight: bold; transition: 0.2s;
+        }
+        .btn-back:hover { background-color: #2c3e50; }
+
+        /* カード型レイアウトの共通設定 */
+        .card {
+            background: #ffffff;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            margin-bottom: 30px;
+        }
+        .card h2 { margin-top: 0; font-size: 18px; border-bottom: 2px solid #edf2f7; padding-bottom: 10px; margin-bottom: 20px; }
+
+        /* グラフを横に並べるレイアウト */
+        .charts-container {
+            display: flex; gap: 20px; flex-wrap: wrap;
+        }
+        .chart-box-small { flex: 1; min-width: 300px; max-width: 400px; }
+        .chart-box-large { flex: 2; min-width: 400px; }
+        .chart-wrapper {
+            position: relative;
+            height: 250px; /* ここでグラフの高さを指定。お好みで 200px や 300px に変えられます */
+            width: 100%;
+        }
+
+        /* 表（テーブル）のモダンなデザイン */
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #edf2f7; }
+        th { background-color: #f8fafc; color: #64748b; font-weight: 600; font-size: 14px; }
+        tr:hover { background-color: #f1f5f9; } /* マウスを乗せた時に色を変える */
+        
+        /* ランキング1位のハイライト */
+        .highlight { background-color: #fffacd !important; font-weight: bold; color: #d35400; }
+        
+        /* スマホなどの小さな画面への対応 */
+        @media (max-width: 768px) {
+            .header { flex-direction: column; align-items: flex-start; gap: 15px; }
+            .chart-box-small, .chart-box-large { max-width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>🍣 寿司アプリ ダッシュボード</h1>
+        <a href="/" class="btn-back">🔙 お客様用ページに戻る</a>
+    </div>
+
+    <div class="charts-container">
+        <div class="card chart-box-small">
+            <h2>📈 顧客属性（男女比）</h2>
+            <div class="chart-wrapper">
+                <canvas id="genderChart"></canvas>
+            </div>
+        </div>
+
+        <div class="card chart-box-large">
+            <h2>📊 世代別の人気ネタ分析</h2>
+            <div class="chart-wrapper">
+                <canvas id="ageSushiChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>🏆 売上ランキング（属性別）</h2>
+        <table>
+            <tr><th>お寿司</th><th>性別</th><th>年齢層</th><th>注文数</th></tr>
+            {% for data in ranking_data %}
+            <tr class="{% if loop.first %}highlight{% endif %}">
+                <td>{{ data[0] }}</td>
+                <td>
+                    {% if data[1] == 'male' %}👨 男性
+                    {% elif data[1] == 'female' %}👩 女性
+                    {% else %}👤 その他{% endif %}
+                </td>
+                <td>{{ data[2] }}</td>
+                <td>{{ data[3] }} 貫</td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4" style="text-align: center; color: #a0aec0;">まだ注文データがありません。</td></tr>
+            {% endfor %}
+        </table>
+    </div>
+
+    <div class="card">
+        <h2>📝 全注文履歴</h2>
+        <table>
+            <tr><th>お客様ID</th><th>性別</th><th>年齢</th><th>注文したお寿司</th></tr>
+            {% for data in all_data %}
+            <tr>
+                <td>#{{ data[0] }}</td>
+                <td>
+                    {% if data[1] == 'male' %}男性
+                    {% elif data[1] == 'female' %}女性
+                    {% else %}その他{% endif %}
+                </td>
+                <td>{{ data[2] }}歳</td>
+                <td><b>{{ data[3] }}</b></td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4" style="text-align: center; color: #a0aec0;">まだ注文データがありません。</td></tr>
+            {% endfor %}
+        </table>
+    </div>
+
+    <script>
+        const ageGroups = {{ age_groups | tojson }};
+        const sushiDatasetsRaw = {{ sushi_datasets | tojson }};
+        const genderCounts = {{ gender_counts | tojson }};
+
+        // --- 1. 男女比の円グラフ ---
+        const ctxGender = document.getElementById('genderChart').getContext('2d');
+        new Chart(ctxGender, {
+            type: 'doughnut', // pieからdoughnut(ドーナツ型)にすると少しモダンになります
+            data: {
+                labels: ['男性', '女性', 'その他'],
+                datasets: [{
+                    data: [genderCounts.male, genderCounts.female, genderCounts.other],
+                    backgroundColor: ['#3498db', '#e74c3c', '#f1c40f'],
+                    borderWidth: 0
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+
+        // --- 2. 世代別・ネタ別の積み上げ棒グラフ ---
+        const colors = ['#ff7675', '#fdcb6e', '#ffeaa7', '#55efc4', '#74b9ff', '#a29bfe'];
+        
+        const datasets = Object.keys(sushiDatasetsRaw).map((sushiName, index) => {
+            return {
+                label: sushiName,
+                data: sushiDatasetsRaw[sushiName],
+                backgroundColor: colors[index % colors.length],
+                borderRadius: 4 // 棒グラフの角を少し丸くする
+            };
+        });
+
+        const ctx = document.getElementById('ageSushiChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'bar',
+            data: { labels: ageGroups, datasets: datasets },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { tooltip: { mode: 'index', intersect: false } },
+                scales: {
+                    x: { stacked: true, grid: { display: false } }, // 縦線を消してスッキリさせる
+                    y: { stacked: true, beginAtZero: true, border: { dash: [4, 4] } } // 横線を点線にする
+                }
+            }
+        });
+    </script>
+</body>
+</html>
