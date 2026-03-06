@@ -132,7 +132,7 @@ def mypage():
                            recent_orders=recent_orders, 
                            pref_labels=pref_labels, 
                            pref_counts=pref_counts,
-                           qr_data=qr_url)
+                           qr_url=qr_url)
 @app.route('/admin')
 def admin():
     conn = sqlite3.connect('sushi_app.db')
