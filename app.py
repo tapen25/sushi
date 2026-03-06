@@ -247,7 +247,7 @@ def add_friend(friend_id):
 
     # 友達登録が終わったら、自分のマイページに戻る
     return redirect(url_for('mypage'))
-if __name__ == '__main__':
-    app.run(debug=True)
 #if __name__ == '__main__':
- #   app.run(debug=True, host='0.0.0.0')
+ #   app.run(debug=True)
+if __name__ == '__main__':
+   app.run(debug=True, host='0.0.0.0')
