@@ -19,7 +19,8 @@
         <div class="profile-card">
             <h3 style="margin-top: 0; color: #2d3748;">フレンド追加QRコード</h3>
             <p style="font-size: 13px; color: #718096; margin: 0;">友達にスキャンしてもらおう！</p>
-            <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={{ qr_url }}" class="qr-code" alt="QR Code">
+            
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={{ qr_url | urlencode }}" class="qr-code" alt="QR Code">
         </div>
         <h2>📊 あなたの寿司の好み</h2>
         <div class="chart-box">
