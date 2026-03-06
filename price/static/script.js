@@ -17,6 +17,26 @@ function addPlate(price) {
     })
     .then(res => res.json())
     .then(data => {
-        document.getElementById("message").innerText = "へい！まいどあり！";
+        document.getElementById("order-message").innerText = "へい！まいどあり！";
     });
+}
+
+//豆知識を表示する
+function showTrivia() {
+    fetch("/trivial")
+    .then(response => response.json())
+    .then(data => {
+        const bubble = document.getElementById("trivial-message");
+        const text = document.getElementById("bubble-text");
+        text.innerText = data.text;
+        bubble.style.display = "block";
+    })
+    .catch(error => {
+        console.error("Error fetching trivia:", error);
+    });
+}
+
+//豆知識のバブルを閉じる
+function closeBubble(){
+    document.getElementById("trivial-message").style.display="none"
 }

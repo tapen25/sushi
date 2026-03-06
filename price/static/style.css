@@ -33,3 +33,98 @@ body{
     transform: scale(0.95);
     box-shadow: 0 0 10px rgba(0,0,0,0.3);
 }
+
+/* 寿司のボタン */
+.floating-fact-btn {
+    position: fixed;       /* 画面に固定 */
+    bottom: 100px;          /* 下から30px */
+    right: 40px;           /* 右から30px */
+
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;    /* 丸ボタン */
+
+    font-size: 8px;
+    border: none;
+    cursor: pointer;
+
+    background-color: #ff7043;
+    color: white;
+
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    transition: transform 0.2s;
+}
+
+.floating-fact-btn:hover {
+    transform: scale(1.1);
+}
+
+.floating-fact-btn:active {
+    transform: scale(0.9);
+}
+
+.bubble{
+  position: fixed;
+  bottom: 190px;
+  right: 50px;
+
+  max-width: 250px;
+  background: #fff8dc;
+
+  padding: 15px;
+  border-radius: 15px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  z-index: 10;
+  display: none;
+ 
+}
+
+/* 吹き出しの三角部分*/
+.bubble::after{
+  content: "";
+  position: absolute;
+
+  bottom: -20px;
+  right: 40px;
+
+  border-width: 10px;
+  border-style: solid;
+
+  border-color: #fff8dc transparent transparent transparent;
+}
+
+.close-btn{
+    position: absolute;
+    top: 5px;
+    right: 8px;
+    background: none;
+    border: none;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+.sushi-master{
+    position: fixed;
+    width: 180px; 
+    height: auto; 
+    bottom: 20px;
+    right: 10px;
+}
+
+.sushi-container{
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    z-index: 1000;
+}
+
+.speech-bubble{
+    background: white;
+    padding: 10px;
+    border-radius: 10px;
+    margin-bottom: 10px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}

@@ -7,43 +7,42 @@
 <body>
 
 <h1>へい！いらっしゃい！！</h1>
-<p> ユーザーID:
+
+<p>ユーザーID:
 <input id="userID" value="1">
 </p>
 
 <h2>食べたお皿のボタンを押してね！</h2>
+
 <div class="plates">
-<img src="/static/plate120.png"
-    class=" plate"
-    onclick="addPlate(120)">
-<img src="/static/plate180.png"
-    class=" plate"
-    onclick="addPlate(180)">
-<img src="/static/plate260.png"
-    class=" plate"
-    onclick="addPlate(260)">
+<img src="/static/plate120.png" class="plate" onclick="addPlate(120)">
+<img src="/static/plate180.png" class="plate" onclick="addPlate(180)">
+<img src="/static/plate260.png" class="plate" onclick="addPlate(260)">
+</div>
+
+<p id="order-message"></p>
+
+<div class="character-area">
+
+    <button class="floating-fact-btn" onclick="showTrivia()">
+        豆知識を教えるでい！🍣
+    </button>
+
+    <!-- 吹き出し -->
+    <div id="trivial-message" class="bubble">
+        <span id="bubble-text"></span>
+        <button class="close-btn" onclick="closeBubble()">X</button>
+    </div>
+
+    <div class="sushi-container"></div>
+
+    <img src="/static/sushi_master.png" class="sushi-master">
 
 </div>
-<p id="message"></p>
-<script src="/static/script.js"></script>
-<h2>合計金額: <span id="total">0</span>円</h2>
-<!-- <script>
-function addPlate(price) {
-    const userID = document.getElementById("userID").value;
 
-    fetch("/plates", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ user_id: parseInt(userID), price: price })
-    })
-    .then(res => res.json())
-    .then(data => {
-        document.getElementById("message").innerText = "追加しました！！"+price+"円";
-    });
-}
-</script> -->
+<h2>合計金額: <span id="total">0</span>円</h2>
+
+<script src="/static/script.js"></script>
 
 </body>
 </html>

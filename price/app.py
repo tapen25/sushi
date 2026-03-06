@@ -4,6 +4,11 @@ from flask import Flask, request, jsonify
 from database import db
 from models import User, Plate
 from flask import render_template
+from google import genai
+import os
+import requests
+
+# client = genai.Client(api_key="AIzaSyB2zBx6XHTPPf148w2Va-ZbR8Egj775pEM")
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///sushi.db'
@@ -60,9 +65,24 @@ def summary(user_id):
         "breakdown": breakdown
     })
 
+#豆知識のAPI
+@app.route("/trivial", methods=["GET"])
+def trivia():
+    response = requests.post(
+        "http://localhost:11434/api/generate",
+        json={
+            "model": "llama3",
+            "prompt":"あなたは寿司職人です。必ず日本語で、寿司に関する豆知識を1つ、100文字以内で教えてください。フランクで親しみやすい話し方をしてください",
+            "stream": False
+        }
+    )
+    data = response.json()
+    return {"text": data["response"]}
 @app.route("/")
 def index():
     return render_template("index.html")
+
+
 
 if __name__ == '__main__':
     app.run(debug=True, port=5001)
