@@ -7,20 +7,16 @@ app.secret_key = 'sushi_secret_key'
 
 # データベースとテーブルを作成する関数
 def init_db():
-    # sushi_app.dbというファイルに接続（無ければ自動で作られます）
     conn = sqlite3.connect('sushi_app.db')
     c = conn.cursor()
-    
-    # ユーザー情報を保存する users テーブルを作成
     c.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT,    /* ← 新しく追加！ */
             gender TEXT,
             age INTEGER
         )
     ''')
-    
-    # 注文履歴を保存する orders テーブルを作成
     c.execute('''
         CREATE TABLE IF NOT EXISTS orders (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -28,41 +24,48 @@ def init_db():
             sushi_name TEXT
         )
     ''')
-    
     conn.commit()
     conn.close()
 
-# アプリを起動する前に、一度だけデータベースを初期化する
 init_db()
-
-# ------ ここから下はルーティング（URLごとの処理） ------
 
 @app.route('/')
 def index():
     return render_template('index.html')
 
-# さきほどのHTMLからデータが送られてくるURL
+# 🌟 変更：ユーザーネームも一緒に受け取って保存する
 @app.route('/register', methods=['POST'])
 def register():
-    # 1. フォームに入力されたデータを受け取る
+    username = request.form.get('username')
     gender = request.form.get('gender')
     age = request.form.get('age')
 
-    # 2. データベースに接続して、データを保存（INSERT）する
     conn = sqlite3.connect('sushi_app.db')
     c = conn.cursor()
-    c.execute('INSERT INTO users (gender, age) VALUES (?, ?)', (gender, age))
-    conn.commit()
     
-    # 3. 今保存したユーザーのIDを取得して、「セッション」に記憶させる
-    # （これをしておくと、後で「誰が注文したか」が分かります）
-    user_id = c.lastrowid
-    session['user_id'] = user_id
+    # 1. まず、入力されたユーザーネームがすでにデータベースに存在するか探す
+    c.execute('SELECT id FROM users WHERE username = ?', (username,))
+    existing_user = c.fetchone()
     
-    conn.close()
+    if existing_user:
+        # 【ログイン処理】すでに存在する場合
+        # existing_user[0] にはその人の昔のユーザーIDが入っているので、それをセッションに復元する
+        session['user_id'] = existing_user[0]
+        conn.close()
+        
+        # ログインした時は、過去の記録が見たいはずなので「マイページ」に飛ばす
+        return redirect(url_for('mypage'))
+        
+    else:
+        # 【新規登録処理】存在しない新しい名前の場合
+        # これまで通り、新しくデータベースに保存する
+        c.execute('INSERT INTO users (username, gender, age) VALUES (?, ?, ?)', (username, gender, age))
+        conn.commit()
+        session['user_id'] = c.lastrowid
+        conn.close()
 
-    # 4. 処理が終わったら、マイページに移動させる
-    return redirect(url_for('mypage'))
+        # 新規のお客さんは、まずは注文したいはずなので「注文画面」に飛ばす
+        return redirect(url_for('order_menu'))
 
 @app.route('/order_menu')
 def order_menu():
@@ -89,40 +92,40 @@ def order():
     # 注文後は「注文画面」に戻る（連続で頼めるように）
     return redirect(url_for('order_menu'))
 
-# 🌟 変更：マイページ（個人の詳細データを取得する）
+# 🌟 変更：マイページでユーザーネームを表示するために取得する
 @app.route('/mypage')
 def mypage():
     if 'user_id' not in session:
         return redirect(url_for('index'))
         
     user_id = session['user_id']
-    
     conn = sqlite3.connect('sushi_app.db')
     c = conn.cursor()
     
-    # 1. 自分の注文履歴（最近のものから10件だけ取得する）
+    # 🌟 追加：自分のユーザーネームを取得する
+    c.execute('SELECT username FROM users WHERE id = ?', (user_id,))
+    user_row = c.fetchone()
+    # もしデータがあれば1つ目を取り出す。なければ「名無し」にする
+    username = user_row[0] if user_row else "名無し"
+    
     c.execute('SELECT sushi_name FROM orders WHERE user_id = ? ORDER BY id DESC LIMIT 10', (user_id,))
     recent_orders = c.fetchall()
 
-    # 2. 自分の好みの推移（どのネタを何回頼んだか集計）
     c.execute('SELECT sushi_name, COUNT(*) FROM orders WHERE user_id = ? GROUP BY sushi_name', (user_id,))
     preferences = c.fetchall()
     conn.close()
 
-    # グラフ用にデータを分ける
     pref_labels = [row[0] for row in preferences]
     pref_counts = [row[1] for row in preferences]
-
-    # フレンド追加用のQRコードにするためのデータ（今回は自分のユーザーID）
-    # 実際のアプリなら https://あなたのドメイン/add_friend/1 などのURLにします
     qr_data = f"sushi_app_friend_id_{user_id}"
 
+    # username を HTML に渡す
     return render_template('mypage.html', 
+                           username=username, 
                            recent_orders=recent_orders, 
                            pref_labels=pref_labels, 
                            pref_counts=pref_counts,
                            qr_data=qr_data)
-
 @app.route('/admin')
 def admin():
     conn = sqlite3.connect('sushi_app.db')

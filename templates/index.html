@@ -8,9 +8,12 @@
 <body>
     <div class="app-container">
         <h1>ようこそ！🍣</h1>
-        <p style="text-align: center; color: #718096; font-size: 14px;">注文を始める前に、お客様の情報を教えてください。</p>
+        <p style="text-align: center; color: #718096; font-size: 14px;">初めての方は情報を入力してください。<br>以前と同じニックネームを入力すると続きから再開できます。</p>
         
         <form action="/register" method="POST">
+            <label>ニックネーム：</label>
+            <input type="text" name="username" placeholder="例: スシロー太郎" required style="margin-bottom: 15px;">
+            <p style="font-size: 12px; color: #e74c3c; margin-top: -10px; margin-bottom: 20px;">※お店側には公開されません</p>
             <label>性別：</label>
             <select name="gender" required>
                 <option value="" disabled selected>選択してください</option>
