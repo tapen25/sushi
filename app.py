@@ -24,9 +24,16 @@ def init_db():
             sushi_name TEXT
         )
     ''')
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS friends (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,    /* 自分 */
+            friend_id INTEGER,  /* 友達 */
+            UNIQUE(user_id, friend_id) /* 同じ人を2回登録しないための設定 */
+        )
+    ''')
     conn.commit()
     conn.close()
-
 init_db()
 
 @app.route('/')
@@ -117,7 +124,7 @@ def mypage():
 
     pref_labels = [row[0] for row in preferences]
     pref_counts = [row[1] for row in preferences]
-    qr_data = f"sushi_app_friend_id_{user_id}"
+    qr_url = f"{request.host_url}add_friend/{user_id}"
 
     # username を HTML に渡す
     return render_template('mypage.html', 
@@ -125,7 +132,7 @@ def mypage():
                            recent_orders=recent_orders, 
                            pref_labels=pref_labels, 
                            pref_counts=pref_counts,
-                           qr_data=qr_data)
+                           qr_data=qr_url)
 @app.route('/admin')
 def admin():
     conn = sqlite3.connect('sushi_app.db')
@@ -210,7 +217,37 @@ def admin():
                            age_groups=age_groups_order, 
                            sushi_datasets=sushi_datasets,
                            gender_counts=gender_counts)
-#if __name__ == '__main__':
-#    app.run(debug=True)
+@app.route('/add_friend/<int:friend_id>')
+def add_friend(friend_id):
+    # まだログインしていない人がQRを読み取った場合は、まず登録(ログイン)画面へ飛ばす
+    if 'user_id' not in session:
+        return redirect(url_for('index'))
+        
+    my_id = session['user_id']
+    
+    # 自分自身をQRコードで読み取ってしまった場合はエラーを防ぐ
+    if my_id == friend_id:
+        return redirect(url_for('mypage'))
+
+    # データベースに友達として記録する
+    conn = sqlite3.connect('sushi_app.db')
+    c = conn.cursor()
+    try:
+        # INSERT OR IGNORE で、すでに友達だった場合はエラーにならず無視する
+        c.execute('INSERT OR IGNORE INTO friends (user_id, friend_id) VALUES (?, ?)', (my_id, friend_id))
+        
+        # 相互フォローにしたい場合は、相手側からも自分をフォローしたことにする
+        c.execute('INSERT OR IGNORE INTO friends (user_id, friend_id) VALUES (?, ?)', (friend_id, my_id))
+        
+        conn.commit()
+    except Exception as e:
+        print(f"エラー: {e}")
+    finally:
+        conn.close()
+
+    # 友達登録が終わったら、自分のマイページに戻る
+    return redirect(url_for('mypage'))
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0')
+    app.run(debug=True)
+#if __name__ == '__main__':
+ #   app.run(debug=True, host='0.0.0.0')
