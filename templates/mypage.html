@@ -16,12 +16,13 @@
     <div class="app-container">
         <h1>👤 {{ username }} さんの<br>マイページ</h1>
         
+        {% if qr_url %}
         <div class="profile-card">
             <h3 style="margin-top: 0; color: #2d3748;">フレンド追加QRコード</h3>
             <p style="font-size: 13px; color: #718096; margin: 0;">友達にスキャンしてもらおう！</p>
-            
             <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={{ qr_url | urlencode }}" class="qr-code" alt="QR Code">
         </div>
+        {% endif %}
         <h2>📊 あなたの寿司の好み</h2>
         <div class="chart-box">
             <canvas id="myPreferenceChart"></canvas>
@@ -35,6 +36,20 @@
                 <li style="justify-content: center; color: #a0aec0;">まだ注文はありません</li>
             {% endfor %}
         </ul>
+        <h2 style="margin-top: 40px;">🤝 フレンド一覧</h2>
+        <ul class="history-list">
+            {% for friend in friends_list %}
+                <li style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>🍣 {{ friend[1] }} さん</span>
+                    <a href="/friend_detail/{{ friend[0] }}" style="background-color: #ff9f43; color: white; padding: 5px 15px; border-radius: 20px; text-decoration: none; font-size: 14px;">好みを見る</a>
+                </li>
+            {% else %}
+                <li style="justify-content: center; color: #a0aec0; font-size: 14px;">
+                    まだフレンドがいません。<br>QRコードを読み取ってもらおう！
+                </li>
+            {% endfor %}
+        </ul>
+        
         
         <br>
         <a href="/order_menu" class="btn-primary" style="width: 80%; max-width: 250px; margin: 30px auto 0; text-align: center; text-decoration: none; background-color: #3498db; box-sizing: border-box;">🔙 注文画面に戻る</a>

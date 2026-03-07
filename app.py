@@ -1,14 +1,16 @@
 import sqlite3
-from flask import Flask, render_template, request, redirect, url_for, session
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 import requests
 import os
 from google import genai
-from flask import jsonify
+
 app = Flask(__name__)
 # セッション（ユーザーを記憶する仕組み）を使うための秘密の鍵
 app.secret_key = 'sushi_secret_key' 
 
-# データベースとテーブルを作成する関数
+# ---------------------------------------------------------
+# 1. データベース構築（起動時に1回だけ呼ばれる）
+# ---------------------------------------------------------
 def init_db():
     conn = sqlite3.connect('sushi_app.db')
     c = conn.cursor()
@@ -33,7 +35,7 @@ def init_db():
         )
     ''')
     
-    # 🌟 注文用テーブル（ここに1つだけ残して、priceも入れます！）
+    # 注文用テーブル（price入り）
     c.execute('''
         CREATE TABLE IF NOT EXISTS orders (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -45,13 +47,17 @@ def init_db():
     
     conn.commit()
     conn.close()
+
+# アプリ起動時にデータベースをセットアップ
 init_db()
 
+# ---------------------------------------------------------
+# 2. 認証・ログイン関連
+# ---------------------------------------------------------
 @app.route('/')
 def index():
     return render_template('index.html')
 
-# 🌟 変更：ユーザーネームも一緒に受け取って保存する
 @app.route('/register', methods=['POST'])
 def register():
     username = request.form.get('username')
@@ -61,30 +67,25 @@ def register():
     conn = sqlite3.connect('sushi_app.db')
     c = conn.cursor()
     
-    # 1. まず、入力されたユーザーネームがすでにデータベースに存在するか探す
     c.execute('SELECT id FROM users WHERE username = ?', (username,))
     existing_user = c.fetchone()
     
     if existing_user:
-        # 【ログイン処理】すでに存在する場合
-        # existing_user[0] にはその人の昔のユーザーIDが入っているので、それをセッションに復元する
+        # 【ログイン処理】
         session['user_id'] = existing_user[0]
         conn.close()
-        
-        # ログインした時は、過去の記録が見たいはずなので「マイページ」に飛ばす
         return redirect(url_for('mypage'))
-        
     else:
-        # 【新規登録処理】存在しない新しい名前の場合
-        # これまで通り、新しくデータベースに保存する
+        # 【新規登録処理】
         c.execute('INSERT INTO users (username, gender, age) VALUES (?, ?, ?)', (username, gender, age))
         conn.commit()
         session['user_id'] = c.lastrowid
         conn.close()
-
-        # 新規のお客さんは、まずは注文したいはずなので「注文画面」に飛ばす
         return redirect(url_for('order_menu'))
 
+# ---------------------------------------------------------
+# 3. 注文関連
+# ---------------------------------------------------------
 @app.route('/order_menu')
 def order_menu():
     if 'user_id' not in session:
@@ -94,24 +95,19 @@ def order_menu():
     conn = sqlite3.connect('sushi_app.db')
     c = conn.cursor()
     
-    # 自分のこれまでの注文の「値段（price）」の合計を計算する
     c.execute('SELECT SUM(price) FROM orders WHERE user_id = ?', (user_id,))
     result = c.fetchone()
-    total_price = result[0] if result[0] else 0 # 何も頼んでいなければ0円
-    
+    total_price = result[0] if result[0] else 0 
     conn.close()
     
     return render_template('order_menu.html', total_price=total_price)
 
-# 🌟 変更：今まで通りのフォーム送信（form）でデータを受け取る方式に戻す
 @app.route('/order', methods=['POST'])
 def order():
     if 'user_id' not in session:
         return redirect(url_for('index'))
         
     user_id = session['user_id']
-    
-    # JSONではなく、HTMLのフォーム(request.form)からデータを受け取る
     sushi_name = request.form.get('sushi_name')
     price = request.form.get('price')
     
@@ -127,34 +123,31 @@ def order():
         finally:
             conn.close()
             
-    # 注文が終わったら、注文画面にリダイレクト（再読み込み）する
     return redirect(url_for('order_menu'))
-# 🌟 お友達の機能：豆知識APIを追加
+
+# ---------------------------------------------------------
+# 4. 豆知識API (Gemini)
+# ---------------------------------------------------------
 @app.route("/trivial", methods=["GET"])
 def trivia():
     try:
-        # パソコンやRenderの設定からAPIキーを読み込みます
         api_key = os.environ.get("GEMINI_API_KEY")
-        
         if not api_key:
             return {"text": "大将は今お休み中でい！（APIキーが設定されていません）"}
             
-        # Geminiクライアントの準備
         client = genai.Client(api_key=api_key)
-        
-        # Geminiに指示を出す（高速で賢い gemini-2.5-flash モデルを使用）
         response = client.models.generate_content(
             model='gemini-2.5-flash',
             contents='あなたは寿司職人です。必ず日本語で、寿司に関する豆知識を1つ、100文字以内で教えてください。フランクで親しみやすい話し方をしてください。'
         )
-        
         return {"text": response.text}
-        
     except Exception as e:
-        print(f"Gemini API エラー: {e}") # ターミナルでエラー原因を確認できるようにする
+        print(f"Gemini API エラー: {e}") 
         return {"text": "大将は今忙しいみたいでい！（通信エラー）"}
 
-# 🌟 変更：マイページでユーザーネームを表示するために取得する
+# ---------------------------------------------------------
+# 5. マイページ・フレンド関連
+# ---------------------------------------------------------
 @app.route('/mypage')
 def mypage():
     if 'user_id' not in session:
@@ -164,10 +157,8 @@ def mypage():
     conn = sqlite3.connect('sushi_app.db')
     c = conn.cursor()
     
-    # 🌟 追加：自分のユーザーネームを取得する
     c.execute('SELECT username FROM users WHERE id = ?', (user_id,))
     user_row = c.fetchone()
-    # もしデータがあれば1つ目を取り出す。なければ「名無し」にする
     username = user_row[0] if user_row else "名無し"
     
     c.execute('SELECT sushi_name FROM orders WHERE user_id = ? ORDER BY id DESC LIMIT 10', (user_id,))
@@ -175,29 +166,94 @@ def mypage():
 
     c.execute('SELECT sushi_name, COUNT(*) FROM orders WHERE user_id = ? GROUP BY sushi_name', (user_id,))
     preferences = c.fetchall()
+
+    # 🌟 ここにフレンド一覧取得処理を移動しました
+    c.execute('''
+        SELECT users.id, users.username 
+        FROM friends 
+        JOIN users ON friends.friend_id = users.id 
+        WHERE friends.user_id = ?
+    ''', (user_id,))
+    friends_list = c.fetchall()
+    
     conn.close()
 
     pref_labels = [row[0] for row in preferences]
     pref_counts = [row[1] for row in preferences]
     qr_url = f"{request.host_url}add_friend/{user_id}"
 
-    # username を HTML に渡す
     return render_template('mypage.html', 
                            username=username, 
                            recent_orders=recent_orders, 
                            pref_labels=pref_labels, 
                            pref_counts=pref_counts,
-                           qr_url=qr_url)
+                           qr_url=qr_url,
+                           friends_list=friends_list)
+
+@app.route('/add_friend/<int:friend_id>')
+def add_friend(friend_id):
+    if 'user_id' not in session:
+        return redirect(url_for('index'))
+        
+    my_id = session['user_id']
+    if my_id == friend_id:
+        return redirect(url_for('mypage'))
+
+    conn = sqlite3.connect('sushi_app.db')
+    c = conn.cursor()
+    try:
+        c.execute('INSERT OR IGNORE INTO friends (user_id, friend_id) VALUES (?, ?)', (my_id, friend_id))
+        c.execute('INSERT OR IGNORE INTO friends (user_id, friend_id) VALUES (?, ?)', (friend_id, my_id))
+        conn.commit()
+    except Exception as e:
+        print(f"エラー: {e}")
+    finally:
+        conn.close()
+
+    return redirect(url_for('mypage'))
+
+# 🌟 下にあったものを正しい位置に移動しました
+@app.route('/friend_detail/<int:friend_id>')
+def friend_detail(friend_id):
+    if 'user_id' not in session:
+        return redirect(url_for('index'))
+
+    conn = sqlite3.connect('sushi_app.db')
+    c = conn.cursor()
+
+    c.execute('SELECT username FROM users WHERE id = ?', (friend_id,))
+    friend_row = c.fetchone()
+    if not friend_row:
+        conn.close()
+        return "ユーザーが見つかりません"
+    friend_name = friend_row[0]
+
+    c.execute('SELECT sushi_name, COUNT(*) FROM orders WHERE user_id = ? GROUP BY sushi_name', (friend_id,))
+    preferences = c.fetchall()
+    conn.close()
+
+    pref_labels = [row[0] for row in preferences]
+    pref_counts = [row[1] for row in preferences]
+
+    return render_template('mypage.html',
+                           username=f"【フレンド】{friend_name}", 
+                           recent_orders=[], 
+                           pref_labels=pref_labels, 
+                           pref_counts=pref_counts,
+                           qr_url=None, 
+                           friends_list=[])
+
+# ---------------------------------------------------------
+# 6. 管理者画面
+# ---------------------------------------------------------
 @app.route('/admin')
 def admin():
     conn = sqlite3.connect('sushi_app.db')
     c = conn.cursor()
     
-    # 1. 全データ一覧
     c.execute('SELECT users.id, users.gender, users.age, orders.sushi_name FROM users JOIN orders ON users.id = orders.user_id')
     all_data = c.fetchall()
 
-    # 2. 売上ランキング
     c.execute('''
         SELECT orders.sushi_name, users.gender, 
             CASE 
@@ -214,7 +270,6 @@ def admin():
     ''')
     ranking_data = c.fetchall()
 
-    # 3. 世代別・ネタ別の集計データ（積み上げ棒グラフ用）
     c.execute('''
         SELECT 
             CASE 
@@ -233,19 +288,14 @@ def admin():
     ''')
     raw_chart_data = c.fetchall()
     
-    # 4. 男女比のグラフ用データ
     c.execute('''
         SELECT users.gender, COUNT(*)
         FROM users JOIN orders ON users.id = orders.user_id
         GROUP BY users.gender
     ''')
     gender_data = c.fetchall()
-
-    # 🌟 ここですべてのデータ取得が終わったので、データベースを閉じる（1回だけ）
     conn.close()
 
-    # ----- 取得したデータの整理（Pythonの処理） -----
-    
     gender_counts = {'male': 0, 'female': 0, 'other': 0}
     for row in gender_data:
         gender_counts[row[0]] = row[1]
@@ -265,44 +315,15 @@ def admin():
             idx = age_groups_order.index(age_group)
             sushi_datasets[sushi_name][idx] = count
 
-    # HTMLにデータを渡す
     return render_template('admin.html', 
                            all_data=all_data, 
                            ranking_data=ranking_data,
                            age_groups=age_groups_order, 
                            sushi_datasets=sushi_datasets,
                            gender_counts=gender_counts)
-@app.route('/add_friend/<int:friend_id>')
-def add_friend(friend_id):
-    # まだログインしていない人がQRを読み取った場合は、まず登録(ログイン)画面へ飛ばす
-    if 'user_id' not in session:
-        return redirect(url_for('index'))
-        
-    my_id = session['user_id']
-    
-    # 自分自身をQRコードで読み取ってしまった場合はエラーを防ぐ
-    if my_id == friend_id:
-        return redirect(url_for('mypage'))
 
-    # データベースに友達として記録する
-    conn = sqlite3.connect('sushi_app.db')
-    c = conn.cursor()
-    try:
-        # INSERT OR IGNORE で、すでに友達だった場合はエラーにならず無視する
-        c.execute('INSERT OR IGNORE INTO friends (user_id, friend_id) VALUES (?, ?)', (my_id, friend_id))
-        
-        # 相互フォローにしたい場合は、相手側からも自分をフォローしたことにする
-        c.execute('INSERT OR IGNORE INTO friends (user_id, friend_id) VALUES (?, ?)', (friend_id, my_id))
-        
-        conn.commit()
-    except Exception as e:
-        print(f"エラー: {e}")
-    finally:
-        conn.close()
-
-    # 友達登録が終わったら、自分のマイページに戻る
-    return redirect(url_for('mypage'))
-#if __name__ == '__main__':
- #   app.run(debug=True)
+# ---------------------------------------------------------
+# アプリ起動のスイッチ（必ず一番下！）
+# ---------------------------------------------------------
 if __name__ == '__main__':
    app.run(debug=True, host='0.0.0.0')
