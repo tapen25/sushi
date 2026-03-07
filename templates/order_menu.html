@@ -135,15 +135,29 @@
     <div class="app-container">
         <h1>へい！いらっしゃい！！🍣</h1>
         
-        <div id="total-area">合計金額: <span id="total">0</span>円</div>
+        <div id="total-area">合計金額: <span id="total">{{ total_price }}</span>円</div>
         <p id="order-message" style="color: #27ae60; font-weight: bold; height: 20px;"></p>
 
         <h2>食べたお皿のボタンを押してね！</h2>
 
         <div class="plates">
-            <img src="/static/plate120.png" class="plate" onclick="orderSushi('120円皿', 120)" alt="120円皿">
-            <img src="/static/plate180.png" class="plate" onclick="orderSushi('180円皿', 180)" alt="180円皿">
-            <img src="/static/plate260.png" class="plate" onclick="orderSushi('260円皿', 260)" alt="260円皿">
+            <form action="/order" method="POST" style="margin: 0;">
+                <input type="hidden" name="sushi_name" value="120円皿">
+                <input type="hidden" name="price" value="120">
+                <input type="image" src="/static/plate120.png" class="plate" alt="120円皿">
+            </form>
+
+            <form action="/order" method="POST" style="margin: 0;">
+                <input type="hidden" name="sushi_name" value="180円皿">
+                <input type="hidden" name="price" value="180">
+                <input type="image" src="/static/plate180.png" class="plate" alt="180円皿">
+            </form>
+
+            <form action="/order" method="POST" style="margin: 0;">
+                <input type="hidden" name="sushi_name" value="260円皿">
+                <input type="hidden" name="price" value="260">
+                <input type="image" src="/static/plate260.png" class="plate" alt="260円皿">
+            </form>
         </div>
 
         <br><br>
@@ -163,28 +177,6 @@
     <img src="/static/sushi_master.png" class="sushi-master" alt="大将">
 
     <script>
-        let total = 0;
-
-        function orderSushi(sushiName, price) {
-            // 合計金額を計算して画面を更新
-            total += price;
-            document.getElementById("total").innerText = total;
-
-            // データベースに送信
-            fetch("/order", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ sushi_name: sushiName, price: price })
-            })
-            .then(res => res.json())
-            .then(data => {
-                const msg = document.getElementById("order-message");
-                msg.innerText = "へい！まいどあり！🍣";
-                // 1.5秒後にメッセージを消す
-                setTimeout(() => { msg.innerText = ""; }, 1500);
-            });
-        }
-
         function showTrivia() {
             const text = document.getElementById("bubble-text");
             text.innerText = "大将が考えてるでい...🤔";

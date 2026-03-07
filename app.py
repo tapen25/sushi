@@ -12,21 +12,18 @@ app.secret_key = 'sushi_secret_key'
 def init_db():
     conn = sqlite3.connect('sushi_app.db')
     c = conn.cursor()
+    
+    # ユーザー用テーブル
     c.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT,    /* ← 新しく追加！ */
+            username TEXT,
             gender TEXT,
             age INTEGER
         )
     ''')
-    c.execute('''
-        CREATE TABLE IF NOT EXISTS orders (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER,
-            sushi_name TEXT
-        )
-    ''')
+    
+    # 友達用テーブル
     c.execute('''
         CREATE TABLE IF NOT EXISTS friends (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -35,14 +32,17 @@ def init_db():
             UNIQUE(user_id, friend_id) /* 同じ人を2回登録しないための設定 */
         )
     ''')
+    
+    # 🌟 注文用テーブル（ここに1つだけ残して、priceも入れます！）
     c.execute('''
         CREATE TABLE IF NOT EXISTS orders (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER,
             sushi_name TEXT,
-            price INTEGER    /* 🌟 お友達のアイデア：値段を追加！ */
+            price INTEGER
         )
     ''')
+    
     conn.commit()
     conn.close()
 init_db()
@@ -89,36 +89,46 @@ def register():
 def order_menu():
     if 'user_id' not in session:
         return redirect(url_for('index'))
-    return render_template('order_menu.html')
+        
+    user_id = session['user_id']
+    conn = sqlite3.connect('sushi_app.db')
+    c = conn.cursor()
+    
+    # 自分のこれまでの注文の「値段（price）」の合計を計算する
+    c.execute('SELECT SUM(price) FROM orders WHERE user_id = ?', (user_id,))
+    result = c.fetchone()
+    total_price = result[0] if result[0] else 0 # 何も頼んでいなければ0円
+    
+    conn.close()
+    
+    return render_template('order_menu.html', total_price=total_price)
 
-# 🌟 変更：注文処理（終わったら注文画面に戻るようにする）
+# 🌟 変更：今まで通りのフォーム送信（form）でデータを受け取る方式に戻す
 @app.route('/order', methods=['POST'])
 def order():
     if 'user_id' not in session:
-        return jsonify({"error": "ログインしていません"}), 401
+        return redirect(url_for('index'))
         
     user_id = session['user_id']
-    data = request.get_json()
-    sushi_name = data.get('sushi_name')
-    price = data.get('price')
+    
+    # JSONではなく、HTMLのフォーム(request.form)からデータを受け取る
+    sushi_name = request.form.get('sushi_name')
+    price = request.form.get('price')
     
     if sushi_name and price is not None:
         try:
             conn = sqlite3.connect('sushi_app.db')
             c = conn.cursor()
-            # 🌟 ここで「price」の列がないとエラーになります
             c.execute('INSERT INTO orders (user_id, sushi_name, price) VALUES (?, ?, ?)', 
                       (user_id, sushi_name, price))
             conn.commit()
         except Exception as e:
-            # エラーが起きたらターミナルに表示して、JavaScriptにもエラーだと伝える
             print(f"データベース保存エラー: {e}")
-            return jsonify({"error": "保存に失敗しました"}), 500
         finally:
             conn.close()
             
-    return jsonify({"message": "へい！まいどあり！🍣"})
-
+    # 注文が終わったら、注文画面にリダイレクト（再読み込み）する
+    return redirect(url_for('order_menu'))
 # 🌟 お友達の機能：豆知識APIを追加
 @app.route("/trivial", methods=["GET"])
 def trivia():
