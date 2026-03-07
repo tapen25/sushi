@@ -1,6 +1,8 @@
 import sqlite3
 from flask import Flask, render_template, request, redirect, url_for, session
-
+import requests
+import os
+from google import genai
 app = Flask(__name__)
 # セッション（ユーザーを記憶する仕組み）を使うための秘密の鍵
 app.secret_key = 'sushi_secret_key' 
@@ -30,6 +32,14 @@ def init_db():
             user_id INTEGER,    /* 自分 */
             friend_id INTEGER,  /* 友達 */
             UNIQUE(user_id, friend_id) /* 同じ人を2回登録しないための設定 */
+        )
+    ''')
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS orders (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            sushi_name TEXT,
+            price INTEGER    /* 🌟 お友達のアイデア：値段を追加！ */
         )
     ''')
     conn.commit()
@@ -83,21 +93,54 @@ def order_menu():
 # 🌟 変更：注文処理（終わったら注文画面に戻るようにする）
 @app.route('/order', methods=['POST'])
 def order():
+    # 誰からの注文か確認（あなたのログイン機能）
     if 'user_id' not in session:
-        return redirect(url_for('index'))
+        return {"error": "ログインしていません"}, 401
         
     user_id = session['user_id']
-    sushi_name = request.form.get('sushi_name')
     
-    if sushi_name:
+    # お友達の fetch から送られてくるデータ(JSON)を受け取る
+    data = request.get_json()
+    sushi_name = data.get('sushi_name')
+    price = data.get('price')
+    
+    if sushi_name and price is not None:
         conn = sqlite3.connect('sushi_app.db')
         c = conn.cursor()
-        c.execute('INSERT INTO orders (user_id, sushi_name) VALUES (?, ?)', (user_id, sushi_name))
+        # ネタの名前と値段の両方を保存する
+        c.execute('INSERT INTO orders (user_id, sushi_name, price) VALUES (?, ?, ?)', 
+                  (user_id, sushi_name, price))
         conn.commit()
         conn.close()
         
-    # 注文後は「注文画面」に戻る（連続で頼めるように）
-    return redirect(url_for('order_menu'))
+    # 画面を切り替えずに「成功したよ」という合図だけを返す
+    return {"message": "へい！まいどあり！"}
+
+
+# 🌟 お友達の機能：豆知識APIを追加
+@app.route("/trivial", methods=["GET"])
+def trivia():
+    try:
+        # パソコンやRenderの設定からAPIキーを読み込みます
+        api_key = os.environ.get("GEMINI_API_KEY")
+        
+        if not api_key:
+            return {"text": "大将は今お休み中でい！（APIキーが設定されていません）"}
+            
+        # Geminiクライアントの準備
+        client = genai.Client(api_key=api_key)
+        
+        # Geminiに指示を出す（高速で賢い gemini-2.5-flash モデルを使用）
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents='あなたは寿司職人です。必ず日本語で、寿司に関する豆知識を1つ、100文字以内で教えてください。フランクで親しみやすい話し方をしてください。'
+        )
+        
+        return {"text": response.text}
+        
+    except Exception as e:
+        print(f"Gemini API エラー: {e}") # ターミナルでエラー原因を確認できるようにする
+        return {"text": "大将は今忙しいみたいでい！（通信エラー）"}
 
 # 🌟 変更：マイページでユーザーネームを表示するために取得する
 @app.route('/mypage')

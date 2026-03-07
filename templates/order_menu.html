@@ -5,23 +5,88 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>注文画面</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        /* お友達の追加デザイン */
+        .character-area { text-align: center; margin-top: 20px; position: relative; }
+        .bubble { display: none; background: #fff; border-radius: 10px; padding: 15px; border: 2px solid #333; margin-bottom: 10px; position: relative; }
+        .close-btn { position: absolute; top: 5px; right: 5px; background: none; border: none; font-size: 16px; cursor: pointer; }
+        .sushi-master { width: 120px; margin-top: 10px; }
+        #total-area { font-size: 24px; font-weight: bold; text-align: center; margin: 20px 0; color: #e74c3c; }
+    </style>
 </head>
 <body>
     <div class="app-container">
         <h1>🍣 ご注文メニュー</h1>
-        <p style="text-align: center; color: #718096; font-size: 14px;">食べたいお寿司をタップ！</p>
         
-        <form action="/order" method="POST" class="sushi-grid">
-            <button type="submit" name="sushi_name" value="マグロ" class="sushi-btn">マグロ</button>
-            <button type="submit" name="sushi_name" value="サーモン" class="sushi-btn">サーモン</button>
-            <button type="submit" name="sushi_name" value="エビ" class="sushi-btn">エビ</button>
-            <button type="submit" name="sushi_name" value="たまご" class="sushi-btn">たまご</button>
-            <button type="submit" name="sushi_name" value="いくら" class="sushi-btn">いくら</button>
-            <button type="submit" name="sushi_name" value="イカ" class="sushi-btn">イカ</button>
-        </form>
+        <div id="total-area">合計金額: <span id="total">0</span>円</div>
+        <p id="order-message" style="text-align: center; color: #27ae60; font-weight: bold; height: 20px;"></p>
+        
+        <div class="sushi-grid">
+            <button onclick="orderSushi('マグロ', 120)" class="sushi-btn">マグロ<br><span style="font-size: 14px;">120円</span></button>
+            <button onclick="orderSushi('サーモン', 180)" class="sushi-btn">サーモン<br><span style="font-size: 14px;">180円</span></button>
+            <button onclick="orderSushi('エビ', 120)" class="sushi-btn">エビ<br><span style="font-size: 14px;">120円</span></button>
+            <button onclick="orderSushi('たまご', 120)" class="sushi-btn">たまご<br><span style="font-size: 14px;">120円</span></button>
+            <button onclick="orderSushi('いくら', 260)" class="sushi-btn">いくら<br><span style="font-size: 14px;">260円</span></button>
+            <button onclick="orderSushi('ウニ', 260)" class="sushi-btn">ウニ<br><span style="font-size: 14px;">260円</span></button>
+        </div>
+        
+        <div class="character-area">
+            <button class="btn-primary" onclick="showTrivia()" style="margin-top: 10px; background-color: #f39c12;">
+                豆知識を教えるでい！🍣
+            </button>
+
+            <div id="trivial-message" class="bubble">
+                <span id="bubble-text"></span>
+                <button class="close-btn" onclick="closeBubble()">X</button>
+            </div>
+            
+            </div>
         
         <br>
         <a href="/mypage" class="btn-primary" style="width: 80%; max-width: 250px; margin: 30px auto 0; text-align: center; text-decoration: none; box-sizing: border-box;">👤 マイページを見る</a>
     </div>
+
+    <script>
+        let total = 0;
+
+        function orderSushi(sushiName, price) {
+            // 合計金額を計算して画面を更新
+            total += price;
+            document.getElementById("total").innerText = total;
+
+            // DBに送信 (fetchAPIを使って、画面をリロードせずに裏側で送信)
+            fetch("/order", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ sushi_name: sushiName, price: price }) // userIDはセッションで判別するので送らなくてOK
+            })
+            .then(res => res.json())
+            .then(data => {
+                const msg = document.getElementById("order-message");
+                msg.innerText = data.message;
+                // 1.5秒後にメッセージを消す
+                setTimeout(() => { msg.innerText = ""; }, 1500);
+            });
+        }
+
+        function showTrivia() {
+            const text = document.getElementById("bubble-text");
+            text.innerText = "大将が考えてるでい...🤔"; // 読み込み中の文字
+            document.getElementById("trivial-message").style.display = "block";
+
+            fetch("/trivial")
+            .then(response => response.json())
+            .then(data => {
+                text.innerText = data.text;
+            })
+            .catch(error => {
+                text.innerText = "通信エラーでい！";
+            });
+        }
+
+        function closeBubble(){
+            document.getElementById("trivial-message").style.display = "none";
+        }
+    </script>
 </body>
 </html>
