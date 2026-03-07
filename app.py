@@ -21,7 +21,8 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT,
             gender TEXT,
-            age INTEGER
+            age INTEGER,
+            group_id INTEGER    /* 🌟 新規：今いるテーブルのID */
         )
     ''')
     
@@ -72,18 +73,24 @@ def register():
     existing_user = c.fetchone()
     
     if existing_user:
-        session['user_id'] = existing_user[0]
-        session['group_id'] = existing_user[0] # 🌟 追加：自分がテーブルの代表者になる
+        user_id = existing_user[0]
+        session['user_id'] = user_id
+        session['group_id'] = user_id # 自分が代表
+        # 🌟 昔のデータでログインした時も、最初は「一人のテーブル」としてリセットする
+        c.execute('UPDATE users SET group_id = ? WHERE id = ?', (user_id, user_id))
+        conn.commit()
         conn.close()
         return redirect(url_for('mypage'))
     else:
         c.execute('INSERT INTO users (username, gender, age) VALUES (?, ?, ?)', (username, gender, age))
+        user_id = c.lastrowid
+        session['user_id'] = user_id
+        session['group_id'] = user_id # 自分が代表
+        # 🌟 データベースにもテーブル情報を保存
+        c.execute('UPDATE users SET group_id = ? WHERE id = ?', (user_id, user_id))
         conn.commit()
-        session['user_id'] = c.lastrowid
-        session['group_id'] = c.lastrowid # 🌟 追加：自分がテーブルの代表者になる
         conn.close()
         return redirect(url_for('order_menu'))
-
 # ---------------------------------------------------------
 # 3. 注文関連
 # ---------------------------------------------------------
@@ -98,19 +105,24 @@ def order_menu():
     conn = sqlite3.connect('sushi_app.db')
     c = conn.cursor()
     
-    # 🌟 自分の合計金額
     c.execute('SELECT SUM(price) FROM orders WHERE user_id = ?', (user_id,))
     my_total = c.fetchone()[0]
     my_total = my_total if my_total else 0 
     
-    # 🌟 テーブル全体の合計金額
     c.execute('SELECT SUM(price) FROM orders WHERE group_id = ?', (group_id,))
     group_total = c.fetchone()[0]
     group_total = group_total if group_total else 0
     
+    # 🌟 新規追加：同じテーブルにいる他の人（自分以外）の名前を取得
+    c.execute('SELECT username FROM users WHERE group_id = ? AND id != ?', (group_id, user_id))
+    companion_rows = c.fetchall()
+    # ['Aさん', 'Bさん'] のようなリストにする
+    companions = [row[0] for row in companion_rows] 
+    
     conn.close()
     
-    return render_template('order_menu.html', my_total=my_total, group_total=group_total)
+    # companions リストも一緒に HTML に渡す
+    return render_template('order_menu.html', my_total=my_total, group_total=group_total, companions=companions)
 
 @app.route('/order', methods=['POST'])
 def order():
@@ -206,13 +218,18 @@ def mypage():
 @app.route('/join_table/<int:host_id>')
 def join_table(host_id):
     if 'user_id' not in session:
-        # 名前が未入力なら、まずはトップへ（ここは後でLINE風カメラに対応させます）
         return redirect(url_for('index'))
         
-    # 読み取った相手（host_id）を自分のテーブルID（group_id）としてメモする！
+    my_id = session['user_id']
     session['group_id'] = host_id
     
-    # テーブルに参加したら注文画面へ
+    # 🌟 データベースの自分のデータも「相手のテーブルに移動したよ」と更新する
+    conn = sqlite3.connect('sushi_app.db')
+    c = conn.cursor()
+    c.execute('UPDATE users SET group_id = ? WHERE id = ?', (host_id, my_id))
+    conn.commit()
+    conn.close()
+    
     return redirect(url_for('order_menu'))
 
 # 🌟 下にあったものを正しい位置に移動しました

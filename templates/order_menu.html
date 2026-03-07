@@ -113,6 +113,16 @@
             <div style="border-top: 1px dashed #ccc; padding-top: 10px; font-size: 14px; color: #34495e;">
                 👤 あなたの注文分: <span style="font-weight: bold; color: #2980b9;">{{ my_total }}円</span>
             </div>
+            
+            {% if companions %}
+                <div style="margin-top: 12px; font-size: 14px; color: #8e44ad; font-weight: bold; background-color: #f4ecf7; padding: 5px; border-radius: 5px;">
+                    👥 {{ companions | join('、') }} と食事中...
+                </div>
+            {% else %}
+                <div style="margin-top: 12px; font-size: 14px; color: #95a5a6;">
+                    👤 おひとり様テーブル
+                </div>
+            {% endif %}
         </div>
         <p id="order-message" style="color: #27ae60; font-weight: bold; height: 20px;"></p>
 
