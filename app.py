@@ -39,7 +39,8 @@ def init_db():
     c.execute('''
         CREATE TABLE IF NOT EXISTS orders (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER,
+            user_id INTEGER,    /* 誰が頼んだか */
+            group_id INTEGER,   /* どのテーブル(代表者)の注文か */
             sushi_name TEXT,
             price INTEGER
         )
@@ -71,15 +72,15 @@ def register():
     existing_user = c.fetchone()
     
     if existing_user:
-        # 【ログイン処理】
         session['user_id'] = existing_user[0]
+        session['group_id'] = existing_user[0] # 🌟 追加：自分がテーブルの代表者になる
         conn.close()
         return redirect(url_for('mypage'))
     else:
-        # 【新規登録処理】
         c.execute('INSERT INTO users (username, gender, age) VALUES (?, ?, ?)', (username, gender, age))
         conn.commit()
         session['user_id'] = c.lastrowid
+        session['group_id'] = c.lastrowid # 🌟 追加：自分がテーブルの代表者になる
         conn.close()
         return redirect(url_for('order_menu'))
 
@@ -92,15 +93,24 @@ def order_menu():
         return redirect(url_for('index'))
         
     user_id = session['user_id']
+    group_id = session.get('group_id', user_id)
+    
     conn = sqlite3.connect('sushi_app.db')
     c = conn.cursor()
     
+    # 🌟 自分の合計金額
     c.execute('SELECT SUM(price) FROM orders WHERE user_id = ?', (user_id,))
-    result = c.fetchone()
-    total_price = result[0] if result[0] else 0 
+    my_total = c.fetchone()[0]
+    my_total = my_total if my_total else 0 
+    
+    # 🌟 テーブル全体の合計金額
+    c.execute('SELECT SUM(price) FROM orders WHERE group_id = ?', (group_id,))
+    group_total = c.fetchone()[0]
+    group_total = group_total if group_total else 0
+    
     conn.close()
     
-    return render_template('order_menu.html', total_price=total_price)
+    return render_template('order_menu.html', my_total=my_total, group_total=group_total)
 
 @app.route('/order', methods=['POST'])
 def order():
@@ -108,6 +118,9 @@ def order():
         return redirect(url_for('index'))
         
     user_id = session['user_id']
+    # 🌟 メモしてあるテーブルIDを取り出す（無ければ自分のIDにする）
+    group_id = session.get('group_id', user_id) 
+    
     sushi_name = request.form.get('sushi_name')
     price = request.form.get('price')
     
@@ -115,8 +128,9 @@ def order():
         try:
             conn = sqlite3.connect('sushi_app.db')
             c = conn.cursor()
-            c.execute('INSERT INTO orders (user_id, sushi_name, price) VALUES (?, ?, ?)', 
-                      (user_id, sushi_name, price))
+            # 🌟 group_id も一緒にデータベースに保存する！
+            c.execute('INSERT INTO orders (user_id, group_id, sushi_name, price) VALUES (?, ?, ?, ?)', 
+                      (user_id, group_id, sushi_name, price))
             conn.commit()
         except Exception as e:
             print(f"データベース保存エラー: {e}")
@@ -180,8 +194,7 @@ def mypage():
 
     pref_labels = [row[0] for row in preferences]
     pref_counts = [row[1] for row in preferences]
-    qr_url = f"{request.host_url}add_friend/{user_id}"
-
+    qr_url = f"{request.host_url}join_table/{user_id}"
     return render_template('mypage.html', 
                            username=username, 
                            recent_orders=recent_orders, 
@@ -190,27 +203,17 @@ def mypage():
                            qr_url=qr_url,
                            friends_list=friends_list)
 
-@app.route('/add_friend/<int:friend_id>')
-def add_friend(friend_id):
+@app.route('/join_table/<int:host_id>')
+def join_table(host_id):
     if 'user_id' not in session:
+        # 名前が未入力なら、まずはトップへ（ここは後でLINE風カメラに対応させます）
         return redirect(url_for('index'))
         
-    my_id = session['user_id']
-    if my_id == friend_id:
-        return redirect(url_for('mypage'))
-
-    conn = sqlite3.connect('sushi_app.db')
-    c = conn.cursor()
-    try:
-        c.execute('INSERT OR IGNORE INTO friends (user_id, friend_id) VALUES (?, ?)', (my_id, friend_id))
-        c.execute('INSERT OR IGNORE INTO friends (user_id, friend_id) VALUES (?, ?)', (friend_id, my_id))
-        conn.commit()
-    except Exception as e:
-        print(f"エラー: {e}")
-    finally:
-        conn.close()
-
-    return redirect(url_for('mypage'))
+    # 読み取った相手（host_id）を自分のテーブルID（group_id）としてメモする！
+    session['group_id'] = host_id
+    
+    # テーブルに参加したら注文画面へ
+    return redirect(url_for('order_menu'))
 
 # 🌟 下にあったものを正しい位置に移動しました
 @app.route('/friend_detail/<int:friend_id>')

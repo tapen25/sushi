@@ -106,7 +106,14 @@
     <div class="app-container">
         <h1>へい！いらっしゃい！！🍣</h1>
         
-        <div id="total-area">合計金額: <span id="total">{{ total_price }}</span>円</div>
+        <div style="background-color: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; text-align: center;">
+            <div style="font-size: 16px; color: #7f8c8d;">テーブルの合計</div>
+            <div style="font-size: 28px; font-weight: bold; color: #e74c3c; margin-bottom: 10px;">{{ group_total }}円</div>
+            
+            <div style="border-top: 1px dashed #ccc; padding-top: 10px; font-size: 14px; color: #34495e;">
+                👤 あなたの注文分: <span style="font-weight: bold; color: #2980b9;">{{ my_total }}円</span>
+            </div>
+        </div>
         <p id="order-message" style="color: #27ae60; font-weight: bold; height: 20px;"></p>
 
         <h2>食べたお皿のボタンを押してね！</h2>
