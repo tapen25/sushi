@@ -3,6 +3,7 @@ from flask import Flask, render_template, request, redirect, url_for, session
 import requests
 import os
 from google import genai
+from flask import jsonify
 app = Flask(__name__)
 # セッション（ユーザーを記憶する仕組み）を使うための秘密の鍵
 app.secret_key = 'sushi_secret_key' 
@@ -93,29 +94,30 @@ def order_menu():
 # 🌟 変更：注文処理（終わったら注文画面に戻るようにする）
 @app.route('/order', methods=['POST'])
 def order():
-    # 誰からの注文か確認（あなたのログイン機能）
     if 'user_id' not in session:
-        return {"error": "ログインしていません"}, 401
+        return jsonify({"error": "ログインしていません"}), 401
         
     user_id = session['user_id']
-    
-    # お友達の fetch から送られてくるデータ(JSON)を受け取る
     data = request.get_json()
     sushi_name = data.get('sushi_name')
     price = data.get('price')
     
     if sushi_name and price is not None:
-        conn = sqlite3.connect('sushi_app.db')
-        c = conn.cursor()
-        # ネタの名前と値段の両方を保存する
-        c.execute('INSERT INTO orders (user_id, sushi_name, price) VALUES (?, ?, ?)', 
-                  (user_id, sushi_name, price))
-        conn.commit()
-        conn.close()
-        
-    # 画面を切り替えずに「成功したよ」という合図だけを返す
-    return {"message": "へい！まいどあり！"}
-
+        try:
+            conn = sqlite3.connect('sushi_app.db')
+            c = conn.cursor()
+            # 🌟 ここで「price」の列がないとエラーになります
+            c.execute('INSERT INTO orders (user_id, sushi_name, price) VALUES (?, ?, ?)', 
+                      (user_id, sushi_name, price))
+            conn.commit()
+        except Exception as e:
+            # エラーが起きたらターミナルに表示して、JavaScriptにもエラーだと伝える
+            print(f"データベース保存エラー: {e}")
+            return jsonify({"error": "保存に失敗しました"}), 500
+        finally:
+            conn.close()
+            
+    return jsonify({"message": "へい！まいどあり！🍣"})
 
 # 🌟 お友達の機能：豆知識APIを追加
 @app.route("/trivial", methods=["GET"])
