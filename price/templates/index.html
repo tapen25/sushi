@@ -15,9 +15,20 @@
 <h2>食べたお皿のボタンを押してね！</h2>
 
 <div class="plates">
-<img src="/static/plate120.png" class="plate" onclick="addPlate(120)">
-<img src="/static/plate180.png" class="plate" onclick="addPlate(180)">
-<img src="/static/plate260.png" class="plate" onclick="addPlate(260)">
+<div class="plate-container">
+    <img src="/static/plate120.png" class="plate" onclick="showSushi(120,this)">
+    <div class="sushi-options"></div>
+</div>
+
+<div class="plate-container">
+    <img src="/static/plate180.png" class="plate" onclick="showSushi(180,this)">
+    <div class="sushi-options"></div>
+</div>
+
+<div class="plate-container">
+    <img src="/static/plate260.png" class="plate" onclick="showSushi(260,this)">
+    <div class="sushi-options"></div>
+    </div>
 </div>
 
 <p id="order-message"></p>

@@ -128,3 +128,28 @@ body{
     margin-bottom: 10px;
     box-shadow: 0 4px 8px rgba(0,0,0,0.2);
 }
+
+.plate-container{
+    position: relative;
+    display: inline-block;
+    margin: 40px;
+}
+
+.sushi-options{
+    position: absolute;
+    width: 160px;
+    height: 160px;
+    top: -40px;
+    left: -40px;
+    pointer-events: none; 
+}
+
+.sushi-icon{
+    position: absolute;
+    width: 50px;
+    cursor: pointer;
+    pointer-events: auto;
+}
+.sushi-icon:hover{
+    transform: scale(1.2);
+}

@@ -40,3 +40,47 @@ function showTrivia() {
 function closeBubble(){
     document.getElementById("trivial-message").style.display="none"
 }
+
+
+//寿司の選択肢を表示する
+function showSushi(price, plateElement){
+
+    const allOptions = document.querySelectorAll(".sushi-options");
+    allOptions.forEach(option => {
+        option.innerHTML ="";
+    });
+
+    const container = plateElement.parentElement.querySelector(".sushi-options");
+
+    const sushiList = [
+        {name:"えび", img:"/static/ebi.png"},
+        {name:"たまご", img:"/static/tamago.png"},
+        {name:"サーモン", img:"/static/salmon.png"},
+        {name:"マグロ", img:"/static/maguro.png"}
+    ];
+
+    sushiList.forEach((sushi, index)=>{
+
+        const img = document.createElement("img");
+        img.src = sushi.img;
+        img.className = "sushi-icon";
+
+        const angle = index * (360 / sushiList.length);
+        const radius = 70;
+
+        const x = Math.cos(angle * Math.PI/180) * radius + 80;
+        const y = Math.sin(angle * Math.PI/180) * radius + 80;
+
+        img.style.left = x + "px";
+        img.style.top = y + "px";
+
+        img.onclick = function(){
+            addPlate(price);
+            container.innerHTML = "";
+        };
+
+        container.appendChild(img);
+
+    });
+
+}
