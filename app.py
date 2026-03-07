@@ -22,7 +22,8 @@ def init_db():
             username TEXT,
             gender TEXT,
             age INTEGER,
-            group_id INTEGER    /* 🌟 新規：今いるテーブルのID */
+            group_id INTEGER,
+            current_avatar TEXT /* 🌟 新規：一時的なAIアバター（絵文字） */
         )
     ''')
     
@@ -75,9 +76,9 @@ def register():
     if existing_user:
         user_id = existing_user[0]
         session['user_id'] = user_id
-        session['group_id'] = user_id # 自分が代表
-        # 🌟 昔のデータでログインした時も、最初は「一人のテーブル」としてリセットする
-        c.execute('UPDATE users SET group_id = ? WHERE id = ?', (user_id, user_id))
+        session['group_id'] = user_id 
+        # 🌟 変更：アバターもnullにリセットする（一時的なデータにするため）
+        c.execute('UPDATE users SET group_id = ?, current_avatar = NULL WHERE id = ?', (user_id, user_id))
         conn.commit()
         conn.close()
         return redirect(url_for('mypage'))
@@ -85,7 +86,7 @@ def register():
         c.execute('INSERT INTO users (username, gender, age) VALUES (?, ?, ?)', (username, gender, age))
         user_id = c.lastrowid
         session['user_id'] = user_id
-        session['group_id'] = user_id # 自分が代表
+        session['group_id'] = user_id 
         # 🌟 データベースにもテーブル情報を保存
         c.execute('UPDATE users SET group_id = ? WHERE id = ?', (user_id, user_id))
         conn.commit()
@@ -105,25 +106,28 @@ def order_menu():
     conn = sqlite3.connect('sushi_app.db')
     c = conn.cursor()
     
+    # （...合計金額の計算処理はそのまま...）
     c.execute('SELECT SUM(price) FROM orders WHERE user_id = ?', (user_id,))
     my_total = c.fetchone()[0]
     my_total = my_total if my_total else 0 
-    
     c.execute('SELECT SUM(price) FROM orders WHERE group_id = ?', (group_id,))
     group_total = c.fetchone()[0]
     group_total = group_total if group_total else 0
     
-    # 🌟 新規追加：同じテーブルにいる他の人（自分以外）の名前を取得
-    c.execute('SELECT username FROM users WHERE group_id = ? AND id != ?', (group_id, user_id))
+    # 🌟 変更：自分のアバターを取得
+    c.execute('SELECT current_avatar FROM users WHERE id = ?', (user_id,))
+    my_avatar = c.fetchone()[0]
+    if not my_avatar: my_avatar = "❓ アバター未設定" # 初期値
+
+    # 🌟 変更：同伴者の名前とアバターを取得
+    c.execute('SELECT username, current_avatar FROM users WHERE group_id = ? AND id != ?', (group_id, user_id))
     companion_rows = c.fetchall()
-    # ['Aさん', 'Bさん'] のようなリストにする
-    companions = [row[0] for row in companion_rows] 
+    # [{'name': 'A', 'avatar': '🐯 マグロ大将'}] のような辞書のリストにする
+    companions = [{"name": row[0], "avatar": row[1] if row[1] else "🐣 注文待ち"} for row in companion_rows] 
     
     conn.close()
     
-    # companions リストも一緒に HTML に渡す
-    return render_template('order_menu.html', my_total=my_total, group_total=group_total, companions=companions)
-
+    return render_template('order_menu.html', my_total=my_total, group_total=group_total, companions=companions, my_avatar=my_avatar)
 @app.route('/order', methods=['POST'])
 def order():
     if 'user_id' not in session:
@@ -170,7 +174,65 @@ def trivia():
     except Exception as e:
         print(f"Gemini API エラー: {e}") 
         return {"text": "大将は今忙しいみたいでい！（通信エラー）"}
-
+def ask_gemini_for_avatar(orders_summary):
+    try:
+        api_key = os.environ.get("GEMINI_API_KEY")
+        if not api_key:
+            return "🐣 寿司の卵" # キーがない場合の初期アバター
+            
+        client = genai.Client(api_key=api_key)
+        
+        # Geminiへのプロンプト（指示）
+        prompt = f"""
+        あなたはユーモアのある老舗の寿司職人です。お客さんの注文履歴を見て、その人に相応しい『粋な称号と絵文字1つ』を考えてください。
+        フランクな話し方は不要で、称号そのものだけを出力してください。
+        例：'🐯 マグロ大王'、'🐣 サーモンLOVER'、'🥚 たまご愛好家'
+        30文字以内で回答してください。
+        
+        注文履歴: {orders_summary}
+        """
+        
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=prompt
+        )
+        # Geminiの回答をそのまま返す
+        return response.text.strip()
+        
+    except Exception as e:
+        print(f"Gemini Avatar エラー: {e}") 
+        return "🍣 寿司通" # エラー時のフォールバック
+    
+@app.route('/update_my_avatar', methods=['POST'])
+def update_my_avatar():
+    if 'user_id' not in session:
+        return jsonify({"error": "ログインしていません"}), 401
+        
+    user_id = session['user_id']
+    
+    conn = sqlite3.connect('sushi_app.db')
+    c = conn.cursor()
+    
+    # 1. 自分の最新の注文履歴を集計
+    c.execute('SELECT sushi_name, COUNT(*) FROM orders WHERE user_id = ? GROUP BY sushi_name', (user_id,))
+    preferences = c.fetchall()
+    
+    # "マグロ 5回, サーモン 2回" のような文字列にする
+    orders_summary = ", ".join([f"{row[0]} {row[1]}回" for row in preferences])
+    
+    if not orders_summary:
+        orders_summary = "まだ注文がありません"
+    
+    # 2. Geminiにアバターを考えてもらう
+    new_avatar = ask_gemini_for_avatar(orders_summary)
+    
+    # 3. データベースに一時保存（キャッシュ）
+    c.execute('UPDATE users SET current_avatar = ? WHERE id = ?', (new_avatar, user_id))
+    conn.commit()
+    conn.close()
+    
+    # 新しいアバターをJavaScriptに返す
+    return jsonify({"new_avatar": new_avatar})
 # ---------------------------------------------------------
 # 5. マイページ・フレンド関連
 # ---------------------------------------------------------

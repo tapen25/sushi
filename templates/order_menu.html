@@ -109,20 +109,41 @@
         <div style="background-color: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; text-align: center;">
             <div style="font-size: 16px; color: #7f8c8d;">テーブルの合計</div>
             <div style="font-size: 28px; font-weight: bold; color: #e74c3c; margin-bottom: 10px;">{{ group_total }}円</div>
-            
             <div style="border-top: 1px dashed #ccc; padding-top: 10px; font-size: 14px; color: #34495e;">
                 👤 あなたの注文分: <span style="font-weight: bold; color: #2980b9;">{{ my_total }}円</span>
             </div>
             
-            {% if companions %}
-                <div style="margin-top: 12px; font-size: 14px; color: #8e44ad; font-weight: bold; background-color: #f4ecf7; padding: 5px; border-radius: 5px;">
-                    👥 {{ companions | join('、') }} と食事中...
+            <div style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px;">
+                
+                <div style="margin-bottom: 15px;">
+                    <p style="font-size: 12px; color: #7f8c8d; margin: 0 0 5px;">タップしてAIアバターを更新！</p>
+                    <div id="my-avatar-icon" onclick="updateMyAvatar()" style="display: inline-flex; flex-direction: column; align-items: center; cursor: pointer; background: #fdf2f2; padding: 10px; border-radius: 10px; border: 2px solid #fab1a0; transition: transform 0.2s;">
+                        <div id="my-avatar-emoji" style="font-size: 40px;">{{ my_avatar[:1] }}</div>
+                        <div id="my-avatar-text" style="font-size: 12px; font-weight: bold; color: #e74c3c; margin-top: 5px;">{{ my_avatar[2:] }}</div>
+                    </div>
+                    <div style="font-size: 14px; font-weight: bold; margin-top: 5px; color: #2d3748;">(あなた)</div>
                 </div>
-            {% else %}
-                <div style="margin-top: 12px; font-size: 14px; color: #95a5a6;">
-                    👤 おひとり様テーブル
-                </div>
-            {% endif %}
+
+                {% if companions %}
+                    <div style="display: flex; justify-content: center; gap: 15px; flex-wrap: wrap; margin-top: 15px; background-color: #f8fafc; padding: 10px; border-radius: 10px;">
+                        {% for companion in companions %}
+                            <div style="display: flex; flex-direction: column; align-items: center; width: 80px;">
+                                <div style="font-size: 30px; width: 50px; height: 50px; background: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+                                    {{ companion.avatar[:1] }}
+                                </div>
+                                <div style="font-size: 12px; font-weight: bold; margin-top: 5px; color: #4a5568; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;">
+                                    {{ companion.name }}
+                                </div>
+                                <div style="font-size: 10px; color: #718096; line-height: 1.2;">
+                                    {{ companion.avatar[2:] }}
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div style="font-size: 14px; color: #95a5a6; margin-top: 10px;">👤 おひとり様テーブル</div>
+                {% endif %}
+            </div>
         </div>
         <p id="order-message" style="color: #27ae60; font-weight: bold; height: 20px;"></p>
 
@@ -178,7 +199,43 @@
         function closeBubble(){
             document.getElementById("trivial-message").style.display = "none";
         }
-
+        function updateMyAvatar() {
+            const iconDiv = document.getElementById('my-avatar-icon');
+            const emojiDiv = document.getElementById('my-avatar-emoji');
+            const textDiv = document.getElementById('my-avatar-text');
+            
+            // 読み込み中の演出（くるくる回す）
+            emojiDiv.innerText = "🤔";
+            textDiv.innerText = "大将が考え中...";
+            iconDiv.style.transform = "rotate(360deg)";
+            iconDiv.style.pointerEvents = "none"; // 連打防止
+            
+            // PythonのAPIを呼び出す（POSTメソッド）
+            fetch("/update_my_avatar", { method: "POST" })
+            .then(res => res.json())
+            .then(data => {
+                // アニメーションを元に戻す
+                iconDiv.style.transform = "rotate(0deg)";
+                iconDiv.style.pointerEvents = "auto";
+                
+                if (data.new_avatar) {
+                    // Geminiが考えた新しいアバターで画面を更新！
+                    // 例: data.new_avatar が '🐯 マグロ大王' の場合
+                    emojiDiv.innerText = data.new_avatar.substring(0, 1); // '🐯'
+                    textDiv.innerText = data.new_avatar.substring(2);    // 'マグロ大王'
+                } else {
+                    emojiDiv.innerText = "🍣";
+                    textDiv.innerText = "寿司通";
+                }
+            })
+            .catch(error => {
+                console.error("Avatar Update Error:", error);
+                emojiDiv.innerText = "💥";
+                textDiv.innerText = "通信エラーでい！";
+                iconDiv.style.transform = "rotate(0deg)";
+                iconDiv.style.pointerEvents = "auto";
+            });
+        }
         // --- 🌟 寿司の選択肢を表示する機能（お友達のコードを改良！） ---
         function showSushi(price, plateElement){
             // 一旦他の開いているネタをすべて閉じる
