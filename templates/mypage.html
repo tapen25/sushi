@@ -53,6 +53,21 @@
         </ul>
 
         <h2 style="margin-top: 40px;">📊 お寿司の好み</h2>
+        <div class="profile-card" style="margin-top: 40px; background-color: #fdf2f2;">
+            <h2 style="margin-top: 0; color: #b91c1c;">🧚‍♂️ あなたの寿司妖精</h2>
+            
+            {% if fairy_image_base64 %}
+                <p style="font-size: 14px; color: #d57e7e; margin-bottom: 20px;">あなたの好みから生まれました</p>
+                <img src="data:image/png;base64,{{ fairy_image_base64 }}" alt="Sushi Fairy" style="max-width: 250px; width: 100%; border-radius: 15px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); background: white;">
+            {% else %}
+                <p style="font-size: 14px; color: #d57e7e; margin-bottom: 20px;">
+                    お寿司を食べ終わったら...<br>
+                    あなたの好みから妖精を召喚してみよう！
+                </p>
+                <a href="/generate_fairy" class="btn-primary" style="background-color: #b91c1c; text-decoration: none; width: 100%; display: block; box-sizing: border-box; text-align: center;">寿司妖精を召喚！</a>
+                <p style="font-size: 11px; color: #a0aec0; margin-top: 10px;">（※生成には10秒ほどかかりますでい！）</p>
+            {% endif %}
+        </div>
         <div class="chart-box">
             <canvas id="myPreferenceChart"></canvas>
         </div>

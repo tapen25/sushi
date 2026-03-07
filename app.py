@@ -3,6 +3,8 @@ from flask import Flask, render_template, request, redirect, url_for, session, j
 import requests
 import os
 from google import genai
+from google.genai.types import GenerateImageConfig # 🌟 Imagen用の設定を追加
+import base64
 
 app = Flask(__name__)
 # セッション（ユーザーを記憶する仕組み）を使うための秘密の鍵
@@ -16,13 +18,23 @@ def init_db():
     c = conn.cursor()
     
     # ユーザー用テーブル
+    #c.execute('''
+    #    CREATE TABLE IF NOT EXISTS users (
+    #        id INTEGER PRIMARY KEY AUTOINCREMENT,
+    #        username TEXT,
+    #        gender TEXT,
+    #        age INTEGER,
+   #         group_id INTEGER    /* 🌟 新規：今いるテーブルのID */
+     #   )
+    #''')
     c.execute('''
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT,
             gender TEXT,
             age INTEGER,
-            group_id INTEGER    /* 🌟 新規：今いるテーブルのID */
+            group_id INTEGER,
+            fairy_image_base64 TEXT    /* 🌟 新規：生成された画像のBase64データ */
         )
     ''')
     
@@ -195,6 +207,11 @@ def mypage():
     c.execute('SELECT sushi_name, COUNT(*) FROM orders WHERE user_id = ? GROUP BY sushi_name', (user_id,))
     preferences = c.fetchall()
 
+    c.execute('SELECT fairy_image_base64 FROM users WHERE id = ?', (user_id,))
+    user_row = c.fetchone()
+    # もし画像があれば取り出す。なければ None
+    fairy_image_base64 = user_row[0] if user_row else None
+
     # 🌟 ここにフレンド一覧取得処理を移動しました
     c.execute('''
         SELECT users.id, users.username 
@@ -215,7 +232,8 @@ def mypage():
                            pref_labels=pref_labels, 
                            pref_counts=pref_counts,
                            qr_url=qr_url,
-                           friends_list=friends_list)
+                           friends_list=friends_list,
+                           fairy_image_base64=fairy_image_base64)
 
 @app.route('/join_table/<int:host_id>')
 def join_table(host_id):
@@ -343,7 +361,74 @@ def admin():
                            age_groups=age_groups_order, 
                            sushi_datasets=sushi_datasets,
                            gender_counts=gender_counts)
+@app.route('/generate_fairy')
+def generate_fairy():
+    if 'user_id' not in session:
+        return redirect(url_for('index'))
+        
+    user_id = session['user_id']
+    api_key = os.environ.get("GEMINI_API_KEY")
+    
+    if not api_key:
+        return "APIキーが設定されていません。"
 
+    # 1. データベースから自分の「お寿司の好み（ランキング）」を取得
+    conn = sqlite3.connect('sushi_app.db')
+    c = conn.cursor()
+    # 🌟 ここ重要！好みを取得する（マイページと同じ処理）
+    c.execute('SELECT sushi_name FROM orders WHERE user_id = ? GROUP BY sushi_name ORDER BY COUNT(*) DESC LIMIT 3', (user_id,))
+    preferences = c.fetchall()
+    
+    # 2. Gemini API（Imagen）に渡すプロンプトを作成
+    if preferences:
+        # 好みランキングからプロンプトを作る
+        top1 = preferences[0][0]
+        top2 = preferences[1][0] if len(preferences) > 1 else ""
+        
+        # 🌟 ここでAIへの「注文書」を作成！
+        # 日本語でも Imagen 3 は理解します。
+        prompt = f"かわいいデジタルアートスタイルの小さな寿司の妖精キャラクター。一番の特徴は「{top1}」に基づいています。"
+        if top2:
+            prompt += f"二番目の特徴は「{top2}」の影響を受けています。"
+        prompt += "白背景。Vibrant colors."
+    else:
+        # 注文がない場合のデフォルト
+        prompt = "かわいいデジタルアートスタイルの小さな寿司の妖精キャラクター。様々な種類のお寿司の影響を受けています。白背景。Vibrant colors."
+
+    # 3. Imagen API（画像生成）を呼び出す！
+    client = genai.Client(api_key=api_key)
+    try:
+        # Imagen 3 モデルを使用して画像を生成
+        # 🌟 呼び出しに数秒かかります！
+        response = client.models.generate_image(
+            model='imagen-3',
+            prompt=prompt,
+            config=GenerateImageConfig(
+                number_of_images=1,
+                aspect_ratio="1:1", # 正方形
+                output_mime_type="image/png" # 出力形式
+            )
+        )
+        
+        # 生成された画像（バイトデータ）
+        image_bytes = response.generated_images[0].image_bytes
+        
+        # 4. バイトデータを文字の暗号（Base64）に変換！
+        encoded_string = base64.b64encode(image_bytes).decode('utf-8')
+        
+        # 5. データベースの自分のデータに保存！
+        c.execute('UPDATE users SET fairy_image_base64 = ? WHERE id = ?', (encoded_string, user_id))
+        conn.commit()
+        
+    except Exception as e:
+        print(f"Imagen API エラー: {e}")
+        conn.close()
+        return f"妖精の召喚に失敗しましたでい... （エラー: {e}）"
+        
+    conn.close()
+    
+    # 妖精ができたら、マイページにリダイレクト！
+    return redirect(url_for('mypage'))
 # ---------------------------------------------------------
 # アプリ起動のスイッチ（必ず一番下！）
 # ---------------------------------------------------------
