@@ -66,7 +66,7 @@ function showSushi(price, plateElement){
         img.className = "sushi-icon";
 
         const angle = index * (360 / sushiList.length);
-        const radius = 70;
+        const radius = 85;
 
         const x = Math.cos(angle * Math.PI/180) * radius + 80;
         const y = Math.sin(angle * Math.PI/180) * radius + 80;
