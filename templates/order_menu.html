@@ -5,46 +5,162 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>注文画面</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    
     <style>
-        /* お友達の追加デザイン */
-        .character-area { text-align: center; margin-top: 20px; position: relative; }
-        .bubble { display: none; background: #fff; border-radius: 10px; padding: 15px; border: 2px solid #333; margin-bottom: 10px; position: relative; }
-        .close-btn { position: absolute; top: 5px; right: 5px; background: none; border: none; font-size: 16px; cursor: pointer; }
-        .sushi-master { width: 120px; margin-top: 10px; }
-        #total-area { font-size: 24px; font-weight: bold; text-align: center; margin: 20px 0; color: #e74c3c; }
+        /* 背景などの基本設定 */
+        body {
+            font-family: sans-serif;
+            text-align: center;
+            background-color: #f8f8f8;
+            background-image: url("/static/background_sushi.jpg");
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            margin: 0;
+            padding: 0;
+        }
+
+        /* アプリ全体の白い箱を透明にして背景を活かす */
+        .app-container {
+            background-color: rgba(255, 255, 255, 0.85); /* 半透明の白 */
+            min-height: 100vh;
+            padding: 20px;
+            box-sizing: border-box;
+            max-width: 600px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        /* お皿の並び */
+        .plates {
+            display: flex;
+            justify-content: center;
+            gap: 20px; /* スマホでも入るように少し間隔を調整 */
+            margin-top: 30px;
+            flex-wrap: wrap; /* 画面が狭い時は折り返す */
+        }
+
+        .plate {
+            width: 100px; /* スマホ向けに少し小さめに調整 */
+            max-width: 30vw;
+            cursor: pointer;
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+
+        .plate:hover {
+            transform: scale(1.1) rotate(3deg);
+        }
+
+        .plate:active {
+            transform: scale(0.95);
+            box-shadow: 0 0 10px rgba(0,0,0,0.3);
+        }
+
+        /* 大将と豆知識ボタン（右下に固定） */
+        .floating-fact-btn {
+            position: fixed;
+            bottom: 100px;
+            right: 20px; /* スマホ向けに少し右寄せ */
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            font-size: 10px;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
+            background-color: #ff7043;
+            color: white;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            transition: transform 0.2s;
+            z-index: 1001; /* 大将より手前に出す */
+        }
+
+        .floating-fact-btn:hover { transform: scale(1.1); }
+        .floating-fact-btn:active { transform: scale(0.9); }
+
+        .bubble {
+            position: fixed;
+            bottom: 190px;
+            right: 30px;
+            max-width: 220px;
+            background: #fff8dc;
+            padding: 15px;
+            border-radius: 15px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            z-index: 1010;
+            display: none;
+            text-align: left;
+            font-size: 14px;
+        }
+
+        .bubble::after {
+            content: "";
+            position: absolute;
+            bottom: -20px;
+            right: 30px;
+            border-width: 10px;
+            border-style: solid;
+            border-color: #fff8dc transparent transparent transparent;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 5px;
+            right: 8px;
+            background: none;
+            border: none;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .sushi-master {
+            position: fixed;
+            width: 120px; /* スマホ向けにサイズ調整 */
+            height: auto;
+            bottom: 10px;
+            right: 10px;
+            z-index: 1000;
+        }
+
+        #total-area {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 20px 0;
+            color: #d35400;
+        }
     </style>
 </head>
 <body>
     <div class="app-container">
-        <h1>🍣 ご注文メニュー</h1>
+        <h1>へい！いらっしゃい！！🍣</h1>
         
         <div id="total-area">合計金額: <span id="total">0</span>円</div>
-        <p id="order-message" style="text-align: center; color: #27ae60; font-weight: bold; height: 20px;"></p>
-        
-        <div class="sushi-grid">
-            <button onclick="orderSushi('マグロ', 120)" class="sushi-btn">マグロ<br><span style="font-size: 14px;">120円</span></button>
-            <button onclick="orderSushi('サーモン', 180)" class="sushi-btn">サーモン<br><span style="font-size: 14px;">180円</span></button>
-            <button onclick="orderSushi('エビ', 120)" class="sushi-btn">エビ<br><span style="font-size: 14px;">120円</span></button>
-            <button onclick="orderSushi('たまご', 120)" class="sushi-btn">たまご<br><span style="font-size: 14px;">120円</span></button>
-            <button onclick="orderSushi('いくら', 260)" class="sushi-btn">いくら<br><span style="font-size: 14px;">260円</span></button>
-            <button onclick="orderSushi('ウニ', 260)" class="sushi-btn">ウニ<br><span style="font-size: 14px;">260円</span></button>
-        </div>
-        
-        <div class="character-area">
-            <button class="btn-primary" onclick="showTrivia()" style="margin-top: 10px; background-color: #f39c12;">
-                豆知識を教えるでい！🍣
-            </button>
+        <p id="order-message" style="color: #27ae60; font-weight: bold; height: 20px;"></p>
 
-            <div id="trivial-message" class="bubble">
-                <span id="bubble-text"></span>
-                <button class="close-btn" onclick="closeBubble()">X</button>
-            </div>
-            
-            </div>
+        <h2>食べたお皿のボタンを押してね！</h2>
+
+        <div class="plates">
+            <img src="/static/plate120.png" class="plate" onclick="orderSushi('120円皿', 120)" alt="120円皿">
+            <img src="/static/plate180.png" class="plate" onclick="orderSushi('180円皿', 180)" alt="180円皿">
+            <img src="/static/plate260.png" class="plate" onclick="orderSushi('260円皿', 260)" alt="260円皿">
+        </div>
+
+        <br><br>
         
-        <br>
-        <a href="/mypage" class="btn-primary" style="width: 80%; max-width: 250px; margin: 30px auto 0; text-align: center; text-decoration: none; box-sizing: border-box;">👤 マイページを見る</a>
+        <a href="/mypage" class="btn-primary" style="display: block; width: 80%; max-width: 250px; margin: 50px auto 0; text-align: center; text-decoration: none; box-sizing: border-box; background-color: #3498db; position: relative; z-index: 500;">👤 マイページを見る</a>
     </div>
+
+    <button class="floating-fact-btn" onclick="showTrivia()">
+        豆知識を<br>教えるでい！
+    </button>
+
+    <div id="trivial-message" class="bubble">
+        <span id="bubble-text"></span>
+        <button class="close-btn" onclick="closeBubble()">X</button>
+    </div>
+
+    <img src="/static/sushi_master.png" class="sushi-master" alt="大将">
 
     <script>
         let total = 0;
@@ -54,16 +170,16 @@
             total += price;
             document.getElementById("total").innerText = total;
 
-            // DBに送信 (fetchAPIを使って、画面をリロードせずに裏側で送信)
+            // データベースに送信
             fetch("/order", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ sushi_name: sushiName, price: price }) // userIDはセッションで判別するので送らなくてOK
+                body: JSON.stringify({ sushi_name: sushiName, price: price })
             })
             .then(res => res.json())
             .then(data => {
                 const msg = document.getElementById("order-message");
-                msg.innerText = data.message;
+                msg.innerText = "へい！まいどあり！🍣";
                 // 1.5秒後にメッセージを消す
                 setTimeout(() => { msg.innerText = ""; }, 1500);
             });
@@ -71,7 +187,7 @@
 
         function showTrivia() {
             const text = document.getElementById("bubble-text");
-            text.innerText = "大将が考えてるでい...🤔"; // 読み込み中の文字
+            text.innerText = "大将が考えてるでい...🤔";
             document.getElementById("trivial-message").style.display = "block";
 
             fetch("/trivial")
