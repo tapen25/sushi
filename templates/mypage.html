@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>マイページ</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+
+    <style>
+        .profile-card { background: #f8fafc; padding: 20px; border-radius: 15px; text-align: center; margin-bottom: 25px; }
+        .qr-code { border-radius: 10px; padding: 10px; background: white; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-top: 15px; }
+        .chart-box { height: 250px; position: relative; width: 100%; margin-bottom: 30px; }
+        .history-list { list-style: none; padding: 0; margin: 0; }
+        .history-list li { background: white; padding: 10px 15px; border-radius: 8px; margin-bottom: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <h1>👤 {{ username }}<br>さんのマイページ</h1>
+        
+        <div class="profile-card" style="background-color: #e8f5e9;">
+            <h3 style="margin-top: 0; color: #2e7d32;">📷 友達を追加する</h3>
+            <p style="font-size: 13px; color: #4caf50; margin-bottom: 15px;">相手のQRコードをスキャンしよう</p>
+            
+            <button id="start-scan-btn" class="btn-primary" style="background-color: #2e7d32; width: 100%;">カメラを起動する</button>
+            
+            <div id="reader" style="width: 100%; margin-top: 15px; display: none; border-radius: 10px; overflow: hidden;"></div>
+        </div>
+
+        {% if qr_url %}
+        <div class="profile-card">
+            <h3 style="margin-top: 0; color: #2d3748;">自分のQRコード</h3>
+            <p style="font-size: 13px; color: #718096; margin: 0;">相手にスキャンしてもらおう！</p>
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={{ qr_url | urlencode }}" class="qr-code" alt="QR Code">
+        </div>
+        {% endif %}
+
+        <h2 style="margin-top: 40px;">🤝 フレンド一覧</h2>
+        <ul class="history-list">
+            {% for friend in friends_list %}
+                <li style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-weight: bold;">🍣 {{ friend[1] }}</span>
+                    <a href="/friend_detail/{{ friend[0] }}" style="background-color: #f39c12; color: white; padding: 6px 12px; border-radius: 20px; text-decoration: none; font-size: 12px; font-weight: bold;">好みを見る</a>
+                </li>
+            {% else %}
+                <li style="justify-content: center; color: #a0aec0; font-size: 14px; text-align: center;">
+                    まだフレンドがいません。<br>カメラで追加してみよう！
+                </li>
+            {% endfor %}
+        </ul>
+
+        <h2 style="margin-top: 40px;">📊 お寿司の好み</h2>
+        <div class="chart-box">
+            <canvas id="myPreferenceChart"></canvas>
+        </div>
+        
+        <h2>🍣 最近の注文履歴</h2>
+        <ul class="history-list">
+            {% for order in recent_orders %}
+                <li>{{ order[0] }}</li>
+            {% else %}
+                <li style="justify-content: center; color: #a0aec0; text-align: center;">まだ注文はありません</li>
+            {% endfor %}
+        </ul>
+        
+        <br>
+        <a href="/order_menu" class="btn-primary" style="display: block; width: 80%; max-width: 250px; margin: 30px auto 0; text-align: center; text-decoration: none; background-color: #3498db; box-sizing: border-box;">🔙 注文画面に戻る</a>
+    </div>
+
+    <script>
+        // --- 1. グラフの描画 ---
+        const labels = {{ pref_labels | tojson }};
+        const counts = {{ pref_counts | tojson }};
+        
+        const ctx = document.getElementById('myPreferenceChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: counts,
+                    backgroundColor: ['#ff7675', '#fdcb6e', '#ffeaa7', '#55efc4', '#74b9ff', '#a29bfe'],
+                    borderWidth: 2
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
+        });
+
+        // --- 2. 🌟 カメラでQRコードを読み取る処理 ---
+        const scanBtn = document.getElementById('start-scan-btn');
+        const readerDiv = document.getElementById('reader');
+        let html5QrcodeScanner;
+
+        scanBtn.addEventListener('click', () => {
+            // ボタンを隠して、カメラの枠を表示する
+            scanBtn.style.display = 'none';
+            readerDiv.style.display = 'block';
+
+            // スキャナーの設定（スマホの背面カメラを優先）
+            html5QrcodeScanner = new Html5QrcodeScanner(
+                "reader",
+                { fps: 10, qrbox: { width: 200, height: 200 } },
+                false
+            );
+
+            // カメラを起動！
+            html5QrcodeScanner.render(onScanSuccess, onScanFailure);
+        });
+
+        // QRコードの読み取りに成功した時に自動で動く関数
+        function onScanSuccess(decodedText, decodedResult) {
+            console.log(`スキャン成功: ${decodedText}`);
+            
+            // カメラを止める
+            html5QrcodeScanner.clear();
+            
+            // 🌟 ここが魔法のコード！
+            // 読み取ったURL（/add_friend/相手のID）へ、ブラウザを自動で移動させます。
+            // ログイン済みなので、Pythonが友達登録処理をして、一瞬でまたこのマイページに戻してくれます！
+            window.location.href = decodedText;
+        }
+
+        // 読み取り中のエラー（QRがブレている時など毎秒起きるので無視でOK）
+        function onScanFailure(error) {
+            // console.warn(`スキャンエラー: ${error}`);
+        }
+    </script>
+</body>
+</html>

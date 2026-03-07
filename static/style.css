@@ -1,0 +1,123 @@
+/* 画面全体の基本設定 */
+body {
+    font-family: 'Helvetica Neue', Arial, 'Hiragino Sans', sans-serif;
+    background-color: #f0f4f8; /* 背景をほんのりブルーグレーに */
+    color: #333;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center; /* 画面を中央寄せ */
+}
+
+/* スマホアプリ風の白い枠組み */
+.app-container {
+    width: 100%;
+    max-width: 480px; /* パソコンで見てもスマホサイズに制限する */
+    background-color: #ffffff;
+    min-height: 100vh; /* 画面の高さいっぱいにする */
+    padding: 30px 20px;
+    box-sizing: border-box;
+    box-shadow: 0 0 15px rgba(0,0,0,0.05);
+}
+
+h1, h2 {
+    text-align: center;
+    color: #2c3e50;
+    margin-bottom: 5px;
+}
+
+/* 入力フォームの装飾 */
+label {
+    font-weight: bold;
+    display: block;
+    margin-top: 20px;
+    margin-bottom: 8px;
+    color: #555;
+}
+
+select, input[type="number"] {
+    width: 100%;
+    padding: 15px;
+    border: 2px solid #e1e8ed;
+    border-radius: 10px;
+    font-size: 16px;
+    box-sizing: border-box;
+    outline: none;
+}
+
+/* メインの決定ボタン（サーモンピンク） */
+.btn-primary {
+    display: block;
+    width: 100%;
+    padding: 18px;
+    margin-top: 30px;
+    background-color: #ff7675; 
+    color: white;
+    border: none;
+    border-radius: 30px; /* 丸みのあるボタン */
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(255, 118, 117, 0.3);
+    transition: transform 0.1s;
+}
+
+.btn-primary:active {
+    transform: scale(0.96); /* 押した時に少し凹むアニメーション */
+}
+
+/* お寿司の注文ボタンをタイル状に並べる（グリッド） */
+.sushi-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr); /* 2列に並べる */
+    gap: 15px;
+    margin-top: 25px;
+}
+
+.sushi-btn {
+    background-color: #fff;
+    border: 2px solid #ff7675;
+    color: #ff7675;
+    padding: 20px 10px;
+    border-radius: 15px;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.sushi-btn:active {
+    background-color: #ff7675;
+    color: #fff;
+}
+
+/* 注文履歴のリスト装飾 */
+.history-list {
+    list-style: none;
+    padding: 0;
+    margin-top: 20px;
+}
+
+.history-list li {
+    background-color: #f8fafc;
+    padding: 15px 20px;
+    margin-bottom: 12px;
+    border-radius: 10px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+}
+
+.history-list li::before {
+    content: "🍣"; /* リストの先頭に絵文字をつける */
+    margin-right: 15px;
+    font-size: 20px;
+}
+
+.link-text {
+    display: block;
+    text-align: center;
+    margin-top: 40px;
+    color: #a0aec0;
+    text-decoration: none;
+    font-size: 14px;
+}

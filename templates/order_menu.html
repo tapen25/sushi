@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>注文画面</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    
+    <style>
+        /* --- 基本設定 --- */
+        body {
+            font-family: sans-serif;
+            text-align: center;
+            background-color: #f8f8f8;
+            background-image: url("/static/background_sushi.jpg");
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            margin: 0;
+            padding: 0;
+        }
+
+        .app-container {
+            background-color: rgba(255, 255, 255, 0.85);
+            min-height: 100vh;
+            padding: 20px;
+            box-sizing: border-box;
+            max-width: 600px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        /* --- 🌟 お友達のUI用CSS（お皿と周りのネタ） --- */
+        .plates {
+            display: flex;
+            justify-content: center;
+            gap: 30px; 
+            margin-top: 50px; /* ネタが広がるスペースを確保 */
+            flex-wrap: wrap; 
+        }
+
+        .plate-container {
+            position: relative; /* ネタをこのお皿を基準に配置するための設定 */
+            width: 100px;
+            height: 100px;
+            margin-bottom: 30px;
+        }
+
+        .plate {
+            width: 100px; 
+            cursor: pointer;
+            transition: transform 0.15s, box-shadow 0.15s;
+            position: relative;
+            z-index: 1; /* ネタより上に表示 */
+        }
+
+        .plate:hover { transform: scale(1.1) rotate(3deg); }
+        .plate:active { transform: scale(0.95); box-shadow: 0 0 10px rgba(0,0,0,0.3); }
+
+        .sushi-options {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: 2; /* お皿の下に配置 */
+            pointer-events: none;
+        }
+
+        .sushi-icon {
+            position: absolute;
+            width: 50px; /* 周りに出るネタのサイズ */
+            height: 50px;
+            cursor: pointer;
+            transition: transform 0.2s;
+            transform: translate(-50%, -50%); /* 中心を合わせる */
+            z-index: 3; /* お皿の上に表示 */
+            pointer-events: auto;
+        }
+        .sushi-icon:hover { transform: translate(-50%, -50%) scale(1.2); }
+
+        /* --- 大将と豆知識ボタン --- */
+        .floating-fact-btn {
+            position: fixed; bottom: 100px; right: 20px; 
+            width: 80px; height: 80px; border-radius: 50%;
+            font-size: 10px; font-weight: bold; border: none;
+            cursor: pointer; background-color: #ff7043; color: white;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3); transition: transform 0.2s; z-index: 1001; 
+        }
+        .floating-fact-btn:hover { transform: scale(1.1); }
+        .floating-fact-btn:active { transform: scale(0.9); }
+
+        .bubble {
+            position: fixed; bottom: 190px; right: 30px; max-width: 220px;
+            background: #fff8dc; padding: 15px; border-radius: 15px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2); z-index: 1010; display: none;
+            text-align: left; font-size: 14px;
+        }
+        .bubble::after {
+            content: ""; position: absolute; bottom: -20px; right: 30px;
+            border-width: 10px; border-style: solid; border-color: #fff8dc transparent transparent transparent;
+        }
+        .close-btn { position: absolute; top: 5px; right: 8px; background: none; border: none; font-size: 16px; cursor: pointer; }
+        .sushi-master { position: fixed; width: 120px; height: auto; bottom: 10px; right: 10px; z-index: 1000; }
+        #total-area { font-size: 24px; font-weight: bold; margin: 20px 0; color: #d35400; }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <h1>へい！いらっしゃい！！🍣</h1>
+        
+        <div id="total-area">合計金額: <span id="total">{{ total_price }}</span>円</div>
+        <p id="order-message" style="color: #27ae60; font-weight: bold; height: 20px;"></p>
+
+        <h2>食べたお皿のボタンを押してね！</h2>
+
+        <form id="hidden-order-form" action="/order" method="POST" style="display: none;">
+            <input type="hidden" name="sushi_name" id="hidden-sushi-name" value="">
+            <input type="hidden" name="price" id="hidden-price" value="">
+        </form>
+
+        <div class="plates">
+            <div class="plate-container">
+                <img src="/static/plate120.png" class="plate" onclick="showSushi(120, this)" alt="120円皿">
+                <div class="sushi-options"></div>
+            </div>
+
+            <div class="plate-container">
+                <img src="/static/plate180.png" class="plate" onclick="showSushi(180, this)" alt="180円皿">
+                <div class="sushi-options"></div>
+            </div>
+
+            <div class="plate-container">
+                <img src="/static/plate260.png" class="plate" onclick="showSushi(260, this)" alt="260円皿">
+                <div class="sushi-options"></div>
+            </div>
+        </div>
+
+        <br><br><br>
+        
+        <a href="/mypage" class="btn-primary" style="display: block; width: 80%; max-width: 250px; margin: 50px auto 0; text-align: center; text-decoration: none; box-sizing: border-box; position: relative; z-index: 500; transition: transform 0.2s;background: none !important; border: none;box-shadow: none;"><img src="/static/back_mypage_button.png"style="width: 100%; height: auto; display: block;"></a>
+    </div>
+
+    <button class="floating-fact-btn" onclick="showTrivia()">豆知識を<br>教えるでい！</button>
+    <div id="trivial-message" class="bubble">
+        <span id="bubble-text"></span>
+        <button class="close-btn" onclick="closeBubble()">X</button>
+    </div>
+    <img src="/static/sushi_master.png" class="sushi-master" alt="大将">
+
+    <script>
+        // --- 豆知識機能 ---
+        function showTrivia() {
+            const text = document.getElementById("bubble-text");
+            text.innerText = "大将が考えてるでい...🤔";
+            document.getElementById("trivial-message").style.display = "block";
+
+            fetch("/trivial")
+            .then(response => response.json())
+            .then(data => { text.innerText = data.text; })
+            .catch(error => { text.innerText = "通信エラーでい！"; });
+        }
+
+        function closeBubble(){
+            document.getElementById("trivial-message").style.display = "none";
+        }
+
+        // --- 🌟 寿司の選択肢を表示する機能（お友達のコードを改良！） ---
+        function showSushi(price, plateElement){
+            // 一旦他の開いているネタをすべて閉じる
+            const allOptions = document.querySelectorAll(".sushi-options");
+            allOptions.forEach(option => { option.innerHTML =""; });
+
+            const container = plateElement.parentElement.querySelector(".sushi-options");
+
+            // 画像のリスト（※ staticフォルダに画像が必要です）
+            const sushiList = [
+                {name:"えび", img:"/static/ebi.png"},
+                {name:"たまご", img:"/static/tamago.png"},
+                {name:"サーモン", img:"/static/salmon.png"},
+                {name:"マグロ", img:"/static/maguro.png"}
+            ];
+
+            sushiList.forEach((sushi, index) => {
+                const img = document.createElement("img");
+                img.src = sushi.img;
+                img.className = "sushi-icon";
+
+                // ネタをお皿の周りに円形に並べる計算
+                const angle = index * (360 / sushiList.length);
+                const radius = 60; // スマホサイズに合わせて半径を少し調整
+
+                // お皿の中心（50px, 50px）を基準に配置
+                const x = Math.cos(angle * Math.PI/180) * radius + 50;
+                const y = Math.sin(angle * Math.PI/180) * radius + 50;
+
+                img.style.left = x + "px";
+                img.style.top = y + "px";
+
+                // 🌟 ネタがクリックされた時の処理（透明フォームを使った送信）
+                img.onclick = function(event) {
+                    event.stopPropagation(); // お皿のクリック反応を防ぐ
+                    
+                    // 透明なフォームにデータをセット！
+                    document.getElementById("hidden-sushi-name").value = sushi.name;
+                    document.getElementById("hidden-price").value = price;
+                    
+                    // フォームを送信！（これでapp.pyの /order にデータが飛びます）
+                    document.getElementById("hidden-order-form").submit();
+                };
+
+                container.appendChild(img);
+            });
+        }
+    </script>
+</body>
+</html>
