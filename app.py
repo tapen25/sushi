@@ -3,7 +3,7 @@ from flask import Flask, render_template, request, redirect, url_for, session, j
 import requests
 import os
 from google import genai
-from google.genai.types import GenerateImageConfig # 🌟 Imagen用の設定を追加
+from google.genai import types # 🌟 Imagen用の設定を追加
 import base64
 
 app = Flask(__name__)
@@ -398,20 +398,20 @@ def generate_fairy():
     # 3. Imagen API（画像生成）を呼び出す！
     client = genai.Client(api_key=api_key)
     try:
-        # Imagen 3 モデルを使用して画像を生成
-        # 🌟 呼び出しに数秒かかります！
-        response = client.models.generate_image(
-            model='imagen-3',
+        # 🌟 変更点1：generate_image ではなく generate_images（複数形）
+        # 🌟 変更点2：モデル名を最新の 'imagen-3.0-generate-002' に変更
+        response = client.models.generate_images(
+            model='imagen-3.0-generate-002',
             prompt=prompt,
-            config=GenerateImageConfig(
+            config=types.GenerateImagesConfig( # 🌟 変更点3：ここも Images（複数形）
                 number_of_images=1,
-                aspect_ratio="1:1", # 正方形
-                output_mime_type="image/png" # 出力形式
+                aspect_ratio="1:1",
+                output_mime_type="image/png"
             )
         )
         
-        # 生成された画像（バイトデータ）
-        image_bytes = response.generated_images[0].image_bytes
+        # 🌟 変更点4：データの取り出し方が1つ深くなりました（.image. が追加）
+        image_bytes = response.generated_images[0].image.image_bytes
         
         # 4. バイトデータを文字の暗号（Base64）に変換！
         encoded_string = base64.b64encode(image_bytes).decode('utf-8')
