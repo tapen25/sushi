@@ -172,14 +172,31 @@
 
             const container = plateElement.parentElement.querySelector(".sushi-options");
 
-            // 画像のリスト（※ staticフォルダに画像が必要です）
-            const sushiList = [
-                {name:"えび", img:"/static/ebi.png"},
-                {name:"たまご", img:"/static/tamago.png"},
-                {name:"サーモン", img:"/static/salmon.png"},
-                {name:"マグロ", img:"/static/maguro.png"}
-            ];
-
+            //皿ごとの寿司ネタ
+            const sushiMenu = {
+                120: [
+                    {name: "たまご", img: "/static/tamago.png"},
+                    {name: "イカ", img: "/static/ika.png"},
+                    {name:"サーモン", img:"/static/salmon.png"},
+                    {name:"マグロ", img:"/static/maguro.png"},
+                    {name:"コーン", img:"/static/corn.png"}
+                ],
+                180:[
+                    {name:"ネギトロ", img:"/static/negitoro.png"},
+                    {name:"タコ", img:"/static/tako.png"},
+                    {name:"ハンバーグ", img:"/static/niku.png"},
+                    {name:"いくら", img:"/static/ikura.png"},
+                    {name: "えび", img: "/static/ebi.png"}
+                ],
+                260:[
+                    {name:"大トロ", img:"/static/ootoro.png"},
+                    {name:"うなぎ", img:"/static/unagi.png"},
+                    {name:"うに", img:"/static/uni.png"},
+                    {name:"カニ",img:"/static/kani.png"},
+                    {name:"赤貝", img:"/static/akagai.png"}
+                ]
+            };
+            const sushiList = sushiMenu[price];
             sushiList.forEach((sushi, index) => {
                 const img = document.createElement("img");
                 img.src = sushi.img;
@@ -187,7 +204,7 @@
 
                 // ネタをお皿の周りに円形に並べる計算
                 const angle = index * (360 / sushiList.length);
-                const radius = 60; // スマホサイズに合わせて半径を少し調整
+                const radius = 65; // スマホサイズに合わせて半径を少し調整
 
                 // お皿の中心（50px, 50px）を基準に配置
                 const x = Math.cos(angle * Math.PI/180) * radius + 50;
