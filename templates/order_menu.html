@@ -82,11 +82,26 @@
 
         /* --- 大将と豆知識ボタン --- */
         .floating-fact-btn {
-            position: fixed; bottom: 100px; right: 20px; 
-            width: 80px; height: 80px; border-radius: 50%;
-            font-size: 10px; font-weight: bold; border: none;
-            cursor: pointer; background-color: #ff7043; color: white;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.3); transition: transform 0.2s; z-index: 1001; 
+            position: fixed;
+            bottom: 100px;
+            right: 20px;
+
+            width: 120px;        /* 横長に */
+            height: 50px;        /* 高さ */
+            border-radius: 8px;  /* 長方形（角を少し丸く） */
+
+            font-size: 12px;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
+
+            background-color: #6ec6ff; /* 水色 */
+            color: white;
+
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            transition: transform 0.2s;
+
+            z-index: 1001;
         }
         .floating-fact-btn:hover { transform: scale(1.1); }
         .floating-fact-btn:active { transform: scale(0.9); }
