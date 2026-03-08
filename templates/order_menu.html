@@ -145,7 +145,7 @@
         </div>
         <p id="order-message" style="color: #27ae60; font-weight: bold; height: 20px;"></p>
 
-        <h2>お皿を押して注文するでえ！</h2>
+        <h2>ボタンを押して注文してくだせい！</h2>
 
         <form id="hidden-order-form" action="/order" method="POST" style="display: none;">
             <input type="hidden" name="sushi_name" id="hidden-sushi-name" value="">
@@ -174,6 +174,8 @@
         <a href="/mypage" class="btn-primary" style="display: block; width: 80%; max-width: 250px; margin: 50px auto 0; text-align: center; text-decoration: none; box-sizing: border-box; position: relative; z-index: 500; transition: transform 0.2s;background: none !important; border: none;box-shadow: none;"><img src="/static/back_mypage_button.png"style="width: 100%; height: auto; display: block;"></a>
     </div>
 
+    <div id="plate-stack" style="position: fixed; bottom: 10px; left: 10px; z-index: 1000;"></div>
+
     <button class="floating-fact-btn" onclick="showTrivia()">豆知識を<br>教えるでい！</button>
     <div id="trivial-message" class="bubble">
         <span id="bubble-text"></span>
@@ -199,6 +201,50 @@
         }
         
         // --- 🌟 寿司の選択肢を表示する機能（お友達のコードを改良！） ---
+        let plateStack = []; // 積み重ねたお皿のリスト
+
+        // 枚数表示を更新する関数
+        function updatePlateCount() {
+            let plateCountElement = document.getElementById('plate-count');
+            if (!plateCountElement) {
+                plateCountElement = document.createElement("div");
+                plateCountElement.id = 'plate-count';
+                plateCountElement.style.position = "absolute";
+                plateCountElement.style.left = "30px";
+                plateCountElement.style.zIndex = 2000;
+                plateCountElement.style.fontSize = "14px";
+                plateCountElement.style.fontWeight = "bold";
+                plateCountElement.style.color = "#333";
+                plateCountElement.style.padding = "5px 10px";
+                plateCountElement.style.borderRadius = "5px";
+                document.getElementById("plate-stack").appendChild(plateCountElement);
+            }
+            // 一番上のお皿の上に表示
+            const topPlateHeight = (plateStack.length - 1) * 10 + 50;
+            plateCountElement.style.bottom = topPlateHeight + "px";
+            plateCountElement.textContent = plateStack.length;
+        }
+
+        // ページロード時にlocalStorageからお皿を復元
+        window.onload = function() {
+            const savedPlates = localStorage.getItem('plateStack');
+            if (savedPlates) {
+                plateStack = JSON.parse(savedPlates);
+                plateStack.forEach((plateSrc, index) => {
+                    const plateImg = document.createElement("img");
+                    plateImg.src = plateSrc;
+                    plateImg.style.position = "absolute";
+                    plateImg.style.bottom = (index * 10) + "px";
+                    plateImg.style.left = "0px";
+                    plateImg.style.width = "100px";
+                    plateImg.style.height = "100px";
+                    plateImg.style.zIndex = index + 1;
+                    document.getElementById("plate-stack").appendChild(plateImg);
+                });
+                updatePlateCount();
+            }
+        };
+
         function showSushi(price, plateElement){
 
     // 他のネタを閉じる
@@ -254,6 +300,24 @@
         // 注文処理
         img.onclick = function(event) {
             event.stopPropagation();
+
+            // お皿を積み重ねる
+            const plateSrc = `/static/${price}_plate.png`;
+            const currentIndex = plateStack.length;
+            const plateImg = document.createElement("img");
+            plateImg.src = plateSrc;
+            plateImg.style.position = "absolute";
+            plateImg.style.bottom = (currentIndex * 10) + "px";
+            plateImg.style.left = "0px";
+            plateImg.style.width = "100px";
+            plateImg.style.height = "100px";
+            plateImg.style.zIndex = currentIndex + 1;
+            document.getElementById("plate-stack").appendChild(plateImg);
+
+            // localStorageに保存
+            plateStack.push(plateSrc);
+            localStorage.setItem('plateStack', JSON.stringify(plateStack));
+            updatePlateCount();
 
             document.getElementById("hidden-sushi-name").value = sushi.name;
             document.getElementById("hidden-price").value = price;
