@@ -15,6 +15,15 @@
         .chart-box { height: 250px; position: relative; width: 100%; margin-bottom: 30px; }
         .history-list { list-style: none; padding: 0; margin: 0; }
         .history-list li { background: white; padding: 10px 15px; border-radius: 8px; margin-bottom: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .app-container {
+    background-image:
+        linear-gradient(rgba(255,255,255,0.65), rgba(255,255,255,0.65)),
+        url("/static/haikei.png");
+
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
     </style>
 </head>
 <body>
@@ -38,7 +47,7 @@
         </div>
         {% endif %}
 
-        <h2 style="margin-top: 40px;">🤝 フレンド一覧</h2>
+    
         <ul class="history-list">
             {% for friend in friends_list %}
                 <li style="display: flex; justify-content: space-between; align-items: center;">
