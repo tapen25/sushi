@@ -343,6 +343,51 @@ def admin():
                            age_groups=age_groups_order, 
                            sushi_datasets=sushi_datasets,
                            gender_counts=gender_counts)
+@app.route('/api/analyze', methods=['POST'])
+def analyze_data():
+    try:
+        # HTMLから送られてきたデータ（JSON）を受け取る
+        data = request.json
+        gender_data = data.get('gender')
+        sushi_data = data.get('sushiData')
+        age_data = data.get('ageGroups')
+
+        # Geminiに指示する文章（プロンプト）を作成
+        prompt = f"""
+        あなたは敏腕の回転寿司チェーン店コンサルタントです。
+        以下の来店顧客データと注文データを分析し、売上アップのための戦略を提案してください。
+
+        【データ】
+        ・来店者の男女比: {gender_data}
+        ・来店者の年齢層: {age_data}
+        ・世代別のネタ注文状況: {sushi_data}
+
+        【出力してほしい内容】
+        1. 顧客の傾向分析（現状はどういう客層・好みの傾向か）
+        2. おすすめのイベント企画（例：「女子会サーモン祭り」「シニア向け豪華ウニ・イクラフェア」など、性別や年齢に刺さるもの）
+        3. 次に強化・入荷すべきネタのアドバイス
+
+        分かりやすく、マークダウン（太字など）を使って箇条書きで出力してください。
+        """
+
+        # 環境変数からAPIキーを取得
+        api_key = os.environ.get("GEMINI_API_KEY")
+        if not api_key:
+            return jsonify({"error": "大将、APIキーが設定されてないでい！"}), 500
+
+        # すでに豆知識APIで使っているのと同じ書き方でGeminiを呼び出す
+        client = genai.Client(api_key=api_key)
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=prompt
+        )
+
+        # AIの回答をHTMLに返す
+        return jsonify({"advice": response.text})
+
+    except Exception as e:
+        print(f"Gemini API エラー: {e}")
+        return jsonify({"error": str(e)}), 500
 
 # ---------------------------------------------------------
 # アプリ起動のスイッチ（必ず一番下！）

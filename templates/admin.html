@@ -67,6 +67,22 @@
             .header { flex-direction: column; align-items: flex-start; gap: 15px; }
             .chart-box-small, .chart-box-large { max-width: 100%; }
         }
+        /* AIボタンと結果ボックスのデザイン */
+        .btn-ai {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white; border: none; padding: 12px 24px;
+            border-radius: 8px; font-weight: bold; font-size: 16px;
+            cursor: pointer; transition: 0.3s; box-shadow: 0 4px 10px rgba(118, 75, 162, 0.3);
+        }
+        .btn-ai:hover { opacity: 0.9; transform: translateY(-2px); }
+        .btn-ai:disabled { background: #ccc; cursor: not-allowed; transform: none; box-shadow: none; }
+        
+        .ai-result-box {
+            margin-top: 20px; background-color: #f8f9fc;
+            border-left: 5px solid #667eea; padding: 20px;
+            border-radius: 0 8px 8px 0; font-size: 15px;
+            line-height: 1.6; white-space: pre-wrap; /* AIの改行をそのまま表示 */
+        }
     </style>
 </head>
 <body>
@@ -90,6 +106,19 @@
                 <canvas id="ageSushiChart"></canvas>
             </div>
         </div>
+    </div>
+
+    <div class="card">
+        <h2>🤖 AI（Gemini）による店舗戦略アシスト</h2>
+        <p>現在の来店データ（男女比・年齢層・人気ネタ）を元に、次にやるべきイベントやおすすめの入荷ネタをAIが提案します。</p>
+        
+        <button id="analyzeBtn" class="btn-ai">✨ AIに分析と提案を依頼する</button>
+        
+        <div id="loadingMsg" style="display: none; margin-top: 15px; color: #e67e22; font-weight: bold;">
+            ⏳ AIがデータを分析して戦略を練っています...（数秒かかります）
+        </div>
+        
+        <div id="aiResult" class="ai-result-box" style="display: none;"></div>
     </div>
 
     <div class="card">
@@ -178,6 +207,45 @@
                     x: { stacked: true, grid: { display: false } }, // 縦線を消してスッキリさせる
                     y: { stacked: true, beginAtZero: true, border: { dash: [4, 4] } } // 横線を点線にする
                 }
+            }
+        });
+        document.getElementById('analyzeBtn').addEventListener('click', async () => {
+            const btn = document.getElementById('analyzeBtn');
+            const loading = document.getElementById('loadingMsg');
+            const resultBox = document.getElementById('aiResult');
+
+            // ボタンを押せないようにして、ローディングを表示
+            btn.disabled = true;
+            loading.style.display = 'block';
+            resultBox.style.display = 'none';
+
+            try {
+                // Flaskの /api/analyze にデータを送信
+                const response = await fetch('/api/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        gender: genderCounts,
+                        sushiData: sushiDatasetsRaw,
+                        ageGroups: ageGroups
+                    })
+                });
+
+                const data = await response.json();
+                
+                if(response.ok) {
+                    // 成功したら結果を表示
+                    resultBox.innerHTML = "<strong>💡 AIからの提案：</strong><br><br>" + data.advice;
+                    resultBox.style.display = 'block';
+                } else {
+                    alert("エラーが発生しました: " + data.error);
+                }
+            } catch (error) {
+                alert("通信エラーが発生しました。");
+            } finally {
+                // ローディングを消してボタンを元に戻す
+                loading.style.display = 'none';
+                btn.disabled = false;
             }
         });
     </script>
